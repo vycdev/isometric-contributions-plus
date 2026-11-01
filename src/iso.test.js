@@ -32,12 +32,19 @@ const showCalendar = (days) => {
           <text>2% Code review</text><text>1% Issues</text>
         </svg>
       </div>
+    </section><section id="js-contribution-activity" class="contribution-activity">
+      <h2>Contribution activity</h2>
+      <div class="Progress" role="img" aria-label="59% of commits">
+        <span class="Progress-item rounded-2" style="width:59%;background-color:#30a14e"></span>
+      </div>
+      <span class="repo-language-color" style="background-color:#f1e05a"></span>
     </section></main>`
 }
 
 let onNavigate
 let onThemeChange
 let onSystemThemeChange
+let onPageMutation
 let systemTheme
 const renderedHeights = []
 const renderedColors = []
@@ -51,6 +58,7 @@ beforeEach(() => {
   onNavigate = null
   onThemeChange = null
   onSystemThemeChange = null
+  onPageMutation = null
   delete document.documentElement.dataset.colorMode
   localStorage.clear()
   vi.spyOn(document, 'addEventListener').mockImplementation(
@@ -73,6 +81,7 @@ beforeEach(() => {
       }
       observe(target) {
         if (target === document.documentElement) onThemeChange = this.callback
+        else onPageMutation = this.callback
       }
       disconnect() {}
     }
@@ -263,6 +272,9 @@ const expectPalette = (color, dark = false) => {
     expect(box.style.getPropertyValue(`--ic-level-${level}`)).toBe(shade)
   })
   expect(box.style.getPropertyValue('--ic-accent')).toBe(palette.accent)
+  const activity = document.getElementById('js-contribution-activity')
+  expect(activity.classList).toContain('ic-activity-themed')
+  expect(activity.style.getPropertyValue('--ic-accent')).toBe(palette.accent)
   expect(renderedColors).toEqual(
     [0, 2, 3].map((level) =>
       Number.parseInt(palette.levels[level].slice(1), 16)
@@ -287,6 +299,9 @@ it.each(
     const originalOverview = document.getElementById(
       'user-activity-overview'
     ).innerHTML
+    const originalActivity = document.getElementById(
+      'js-contribution-activity'
+    ).innerHTML
     await import('./iso.js')
     await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
     expectPalette(DEFAULT_CONTRIBUTION_COLOR)
@@ -298,6 +313,9 @@ it.each(
     expectPalette('#d040a0')
     expect(document.getElementById('user-activity-overview').innerHTML).toBe(
       originalOverview
+    )
+    expect(document.getElementById('js-contribution-activity').innerHTML).toBe(
+      originalActivity
     )
     expect(renderedHeights).toEqual(originalHeights)
     expect(document.querySelector('.js-calendar-graph').innerHTML).toBe(
@@ -314,8 +332,34 @@ it.each(
     expect(document.getElementById('user-activity-overview').innerHTML).toBe(
       originalOverview
     )
+    expect(document.getElementById('js-contribution-activity').innerHTML).toBe(
+      originalActivity
+    )
   }
 )
+
+it('themes a timeline loaded after the calendar and preserves appended activity data', async () => {
+  const notify = mockChromeStorage({ contributionColor: '#aa00cc' })
+  showCalendar(outlierCalendar())
+  const timeline = document.getElementById('js-contribution-activity')
+  const originalActivity = timeline.innerHTML
+  timeline.remove()
+  await import('./iso.js')
+  await vi.waitFor(() => expect(onPageMutation).toBeTypeOf('function'))
+  document.querySelector('main').append(timeline)
+  onPageMutation()
+  expectPalette('#aa00cc')
+  const bar = timeline.querySelector('.Progress').cloneNode(true)
+  bar.setAttribute('aria-label', '1% of commits')
+  bar.firstElementChild.style.width = '1%'
+  timeline.append(bar)
+  const appendedMarkup = timeline.innerHTML
+  onPageMutation()
+  notify({ contributionColor: { newValue: '#ee8800' } })
+  expectPalette('#ee8800')
+  expect(timeline.innerHTML).toBe(appendedMarkup)
+  expect(timeline.innerHTML).toContain(originalActivity)
+})
 
 it.each(['localStorage', 'chrome.storage.local'])(
   'restores the %s color after reloads, profile changes, and year changes',

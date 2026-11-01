@@ -290,6 +290,13 @@ const setContainerViewType = (type) => {
 const getSquareColor = (rect) =>
   palette.levels[Number(rect.dataset.level)]?.slice(1) ?? getElementColor(rect)
 
+const themeContributionActivity = () => {
+  const activity = document.getElementById('js-contribution-activity')
+  if (!activity || !palette) return
+  activity.classList.add('ic-activity-themed')
+  applyContributionPalette(activity, palette)
+}
+
 const applyTheme = () => {
   palette = createContributionPalette(
     contributionColor,
@@ -297,6 +304,7 @@ const applyTheme = () => {
   )
   contributionsBox.classList.add('ic-themed')
   applyContributionPalette(contributionsBox, palette)
+  themeContributionActivity()
 }
 
 const refreshColors = () => {
@@ -508,6 +516,7 @@ const generateIsometricChart = () => {
     ) {
       generateIsometricChart()
     }
+    themeContributionActivity()
   }
 
   let observer = null

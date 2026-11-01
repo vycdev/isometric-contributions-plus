@@ -68,3 +68,8 @@
 .ic-themed .js-activity-overview-graph .activity-overview-point {
   stroke: var(--ic-accent);
 }
+
+/* Commit-share bars use inline backgrounds in the separate activity timeline. */
+.ic-activity-themed .Progress-item {
+  background-color: var(--ic-accent) !important;
+}

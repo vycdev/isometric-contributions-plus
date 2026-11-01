@@ -23,7 +23,7 @@ Open GitHub charts update immediately when you change the setting. The selected 
 
 ## Contribution color
 
-Open the extension's toolbar menu and choose a **Contribution color**. Readable intensity shades are derived from that color for light and dark themes. The calendar, its legend, the isometric cubes, contribution statistics, Activity overview chart, and view controls update together on open GitHub profiles. **Reset to blue** restores the default color (`#0969da`) without changing the height scale.
+Open the extension's toolbar menu and choose a **Contribution color**. Readable intensity shades are derived from that color for light and dark themes. The calendar, its legend, the isometric cubes, contribution statistics, Activity overview chart, Contribution activity bars, and view controls update together on open GitHub profiles. **Reset to blue** restores the default color (`#0969da`) without changing the height scale.
 
 Your color is saved across profiles, selected years, and reloads. It works in 2D, 3D, and Both modes with every height scale. Colors only change presentation: contribution counts, dates, tooltips, statistics, and GitHub's intensity buckets retain their original values.
 
