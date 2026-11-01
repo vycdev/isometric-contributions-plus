@@ -11,15 +11,21 @@ Besides being sort of neat looking, this view is interesting in that it highligh
 
 <img src="img/preview-dark.png" width="1052" />
 
-## Height scale
+## Contribution scale
 
-Click the extension's toolbar icon to open its settings menu. Under **Height scale**, choose how bar heights represent daily contributions:
+Click the extension's toolbar icon to open its settings menu. Under **Contribution scale**, choose how 3D bar heights and 2D color intensity represent daily contributions:
 
-- **Linear** (default): heights are proportional to contribution counts.
+- **Linear** (default): height and color intensity are proportional to contribution counts.
 - **Square root**: gives everyday activity a moderate boost while keeping peaks distinct. A gentler adjustment than logarithmic scaling, with less crowding from tall neighboring bars.
 - **Logarithmic**: reduces the visual impact of unusually busy days so everyday activity is easier to see.
 
-Open GitHub charts update immediately when you change the setting. The selected scale is displayed beside the daily average beneath the contribution statistics. Your choice is saved across profiles, years, and page reloads. All three scales keep inactive days flat and the busiest day at the maximum height. Square-root and logarithmic heights are not proportional to counts. Contribution counts, statistics, and GitHub's square colors stay unchanged.
+Open GitHub charts update immediately in 2D, 3D, and Both modes when you change the setting. The selected scale is displayed beside the daily average and beneath the 2D legend. Your choice is saved across profiles, years, and page reloads. All three scales keep inactive days neutral and flat, and the busiest visible day at maximum intensity and height. Square-root and logarithmic heights and intensities are not proportional to counts. Calendar square sizes, dates, counts, tooltips, totals, averages, and streaks stay unchanged.
+
+The 2D colors interpolate through the current palette; legend swatches represent 0%, 25%, 50%, 75%, and 100% of the selected intensity scale. For a 609-contribution peak, a 10-contribution day has about 1.6% Linear, 12.8% Square root, or 37.4% Logarithmic intensity. Empty years stay neutral; a year with one contribution gives that day maximum intensity.
+
+### Palette integration
+
+`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) and color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
 
 ## Installation
 

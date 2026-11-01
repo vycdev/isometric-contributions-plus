@@ -357,4 +357,18 @@ describe('parseCalendarGraph', () => {
     expect(result).toHaveLength(1)
     expect(result[0].count).toBeUndefined()
   })
+
+  it('reads exact counts from unhydrated tooltips linked with for', () => {
+    const element = createDayElement('2024-01-01', '0', null)
+    element.removeAttribute('aria-labelledby')
+    element.id = 'contribution-day'
+    const tooltip = createTooltipElement(
+      'tooltip',
+      '609 contributions on January 1st.'
+    )
+    tooltip.setAttribute('for', element.id)
+    expect(
+      parseCalendarGraph([element], [tooltip], () => 'ffffff')[0].count
+    ).toBe(609)
+  })
 })

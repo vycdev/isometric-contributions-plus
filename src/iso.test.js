@@ -1,19 +1,28 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { intensityColor } from './calendar.js'
 import { fetchExtendedStreakData } from './history.js'
+import { contributionIntensity } from './utils.js'
 
 vi.mock('./history.js', () => ({ fetchExtendedStreakData: vi.fn() }))
 
 const day = (date, count = 1) => ({ date: new Date(date), count })
 const showCalendar = (days) => {
   document.body.innerHTML = `
+    <style>
+      .ContributionCalendar-day[data-level="0"] { fill: rgb(235, 237, 240); }
+      .ContributionCalendar-day[data-level="1"] { fill: rgb(155, 233, 168); }
+      .ContributionCalendar-day[data-level="2"] { fill: rgb(64, 196, 99); }
+      .ContributionCalendar-day[data-level="3"] { fill: rgb(48, 161, 78); }
+      .ContributionCalendar-day[data-level="4"] { fill: rgb(33, 110, 57); }
+    </style>
     <div class="vcard-names-container"></div>
     <main><section class="js-yearly-contributions">
       <h2>Contributions</h2><div><div class="js-calendar-graph">
         <table class="js-calendar-graph-table"><tbody><tr>${days
           .map(
             (d, i) =>
-              `<td class="ContributionCalendar-day" data-date="${d.date.toISOString().slice(0, 10)}" data-ix="0" aria-labelledby="tip-${i}" style="fill: rgb(0, 128, 0)"></td>`
+              `<td class="ContributionCalendar-day" data-date="${d.date.toISOString().slice(0, 10)}" data-level="${d.count > 0 ? 4 : 0}" data-ix="0" aria-labelledby="tip-${i}" style="width: 10px;"></td>`
           )
           .join('')}</tr></tbody></table>
         ${days.map((d, i) => `<tool-tip id="tip-${i}">${d.count} contributions on a day</tool-tip>`).join('')}
@@ -22,9 +31,13 @@ const showCalendar = (days) => {
 }
 
 let onNavigate
+let onThemeChange
+let onColorSchemeChange
 const renderedHeights = []
+const renderedColors = []
 const clearChart = vi.fn(() => {
   renderedHeights.length = 0
+  renderedColors.length = 0
 })
 
 beforeEach(() => {
@@ -36,11 +49,20 @@ beforeEach(() => {
       if (name === 'turbo:load') onNavigate = listener
     }
   )
-  vi.stubGlobal('matchMedia', () => ({ addEventListener() {} }))
+  vi.stubGlobal('matchMedia', () => ({
+    addEventListener(_name, listener) {
+      onColorSchemeChange = listener
+    }
+  }))
   vi.stubGlobal(
     'MutationObserver',
     class {
-      observe() {}
+      constructor(callback) {
+        this.callback = callback
+      }
+      observe(target) {
+        if (target === document.documentElement) onThemeChange = this.callback
+      }
       disconnect() {}
     }
   )
@@ -57,7 +79,8 @@ beforeEach(() => {
       }
     },
     CubeColor: class {
-      getByHorizontalColor() {
+      getByHorizontalColor(color) {
+        renderedColors.push(color)
         return 0
       }
     },
@@ -78,6 +101,25 @@ const outlierCalendar = () => [
   day('2024-01-02', 10),
   day('2024-01-03', 609)
 ]
+
+const palette = [
+  'rgb(235, 237, 240)',
+  'rgb(155, 233, 168)',
+  'rgb(64, 196, 99)',
+  'rgb(48, 161, 78)',
+  'rgb(33, 110, 57)'
+]
+const calendarColors = () =>
+  [...document.querySelectorAll('td.ContributionCalendar-day')].map((element) =>
+    element.style.getPropertyValue('--ic-intensity-color')
+  )
+const expectedColors = (scale, counts = [0, 10, 609]) =>
+  counts.map((count) =>
+    intensityColor(
+      contributionIntensity(count, Math.max(...counts), scale),
+      palette
+    )
+  )
 
 const mockChromeStorage = (settings = {}) => {
   let onChanged
@@ -101,7 +143,7 @@ it.each([
   ['square-root', 'Square root', [3, 15, 103]],
   ['logarithmic', 'Logarithmic', [3, 40, 103]]
 ])(
-  'switches to %s and back while preserving counts and colors',
+  'switches to %s and back while preserving counts and 3D colors',
   async (scale, label, heights) => {
     const notify = mockChromeStorage()
     showCalendar(outlierCalendar())
@@ -116,8 +158,14 @@ it.each([
         (span) => span.textContent
       )
     const originalStats = statValues()
-    const originalCalendar =
-      document.querySelector('.js-calendar-graph').innerHTML
+    const originalColors = [...renderedColors]
+    const originalTooltips = [...document.querySelectorAll('tool-tip')].map(
+      (element) => element.outerHTML
+    )
+    const originalDayData = [
+      ...document.querySelectorAll('td.ContributionCalendar-day')
+    ].map((element) => ({ ...element.dataset }))
+    expect(calendarColors()).toEqual(expectedColors('linear'))
     expect(document.getElementById('ic-height-scale')).toBeNull()
     expect(canvas.getAttribute('aria-label')).toContain('linear')
     expect(scaleLabel.textContent).toBe('Scale: Linear')
@@ -125,21 +173,35 @@ it.each([
 
     notify({ heightScale: { newValue: scale } })
     expect(renderedHeights).toEqual(heights)
+    expect(renderedColors).toEqual(originalColors)
     expect(clearChart).toHaveBeenCalledTimes(2)
     expect(canvas.getAttribute('aria-label')).toContain(label.toLowerCase())
     expect(canvas.title).not.toBe('')
     expect(scaleLabel.textContent).toBe(`Scale: ${label}`)
     expect(scaleLabel.title).toBe(canvas.title)
     expect(statValues()).toEqual(originalStats)
-    expect(document.querySelector('.js-calendar-graph').innerHTML).toBe(
-      originalCalendar
-    )
+    expect(calendarColors()).toEqual(expectedColors(scale))
+    expect(
+      [...document.querySelectorAll('tool-tip')].map(
+        (element) => element.outerHTML
+      )
+    ).toEqual(originalTooltips)
+    expect(
+      [...document.querySelectorAll('td.ContributionCalendar-day')].map(
+        (element) => ({ ...element.dataset })
+      )
+    ).toEqual(originalDayData)
+    expect(
+      document.getElementById('ic-calendar-scale-label').textContent
+    ).toContain(`Scale: ${label}`)
 
     notify({ heightScale: { newValue: 'linear' } })
     expect(renderedHeights).toEqual([3, 4, 103])
+    expect(renderedColors).toEqual(originalColors)
     expect(clearChart).toHaveBeenCalledTimes(3)
     expect(canvas.getAttribute('aria-label')).toContain('linear')
     expect(scaleLabel.textContent).toBe('Scale: Linear')
+    expect(calendarColors()).toEqual(expectedColors('linear'))
   }
 )
 
@@ -160,6 +222,7 @@ it.each([
     showCalendar(outlierCalendar())
     await import('./iso.js')
     await vi.waitFor(() => expect(renderedHeights).toEqual(heights))
+    expect(calendarColors()).toEqual(expectedColors(scale))
     expect(
       document
         .getElementById('isometric-contributions')
@@ -173,11 +236,106 @@ it.each([
     showCalendar(outlierCalendar())
     onNavigate()
     expect(renderedHeights).toEqual(heights)
+    expect(calendarColors()).toEqual(expectedColors(scale))
     expect(
       document.querySelector('.js-yearly-contributions').classList
     ).toContain('ic-both')
   }
 )
+
+it.each(['squares', 'both'])(
+  'updates 2D intensity immediately in %s mode and retains it across view changes',
+  async (view) => {
+    const notify = mockChromeStorage({ toggleSetting: view })
+    showCalendar(outlierCalendar())
+    await import('./iso.js')
+    await vi.waitFor(() =>
+      expect(calendarColors()).toEqual(expectedColors('linear'))
+    )
+    notify({ heightScale: { newValue: 'logarithmic' } })
+    expect(calendarColors()).toEqual(expectedColors('logarithmic'))
+    expect(
+      document.querySelector('.js-yearly-contributions').classList
+    ).toContain(`ic-${view}`)
+    for (const mode of ['cubes', 'squares', 'both']) {
+      document.querySelector(`[data-ic-option="${mode}"]`).click()
+      expect(calendarColors()).toEqual(expectedColors('logarithmic'))
+    }
+  }
+)
+
+it.each(['linear', 'square-root', 'logarithmic'])(
+  '%s keeps an empty year neutral and a one-contribution year at maximum',
+  async (scale) => {
+    mockChromeStorage({ heightScale: scale })
+    showCalendar([day('2024-01-01', 0), day('2024-12-31', 0)])
+    await import('./iso.js')
+    await vi.waitFor(() =>
+      expect(calendarColors()).toEqual([palette[0], palette[0]])
+    )
+    expect(
+      document.getElementById('ic-calendar-scale-label').textContent
+    ).toContain('Peak: 0/day')
+    showCalendar([day('2023-01-01', 0), day('2023-12-31', 1)])
+    window.history.replaceState(null, '', '/new-profile?from=2023-01-01')
+    onNavigate()
+    expect(calendarColors()).toEqual([palette[0], palette[4]])
+    expect(renderedHeights).toEqual([3, 103])
+  }
+)
+
+it('resamples palette colors on GitHub theme and system theme changes', async () => {
+  mockChromeStorage({ heightScale: 'square-root' })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() =>
+    expect(calendarColors()).toEqual(expectedColors('square-root'))
+  )
+  const darkPalette = [
+    'rgb(22, 27, 34)',
+    'rgb(14, 68, 41)',
+    'rgb(0, 109, 50)',
+    'rgb(38, 166, 65)',
+    'rgb(57, 211, 83)'
+  ]
+  const theme = document.createElement('style')
+  theme.textContent = darkPalette
+    .map(
+      (color, level) =>
+        `.ContributionCalendar-day[data-level="${level}"] { fill: ${color}; }`
+    )
+    .join('')
+  document.body.append(theme)
+  onThemeChange()
+  const darkColors = [0, 10, 609].map((count) =>
+    intensityColor(
+      contributionIntensity(count, 609, 'square-root'),
+      darkPalette
+    )
+  )
+  expect(calendarColors()).toEqual(darkColors)
+  expect(renderedColors).toEqual([0x161b22, 0x39d353, 0x39d353])
+  onColorSchemeChange()
+  expect(calendarColors()).toEqual(darkColors)
+  expect(renderedColors).toEqual([0x161b22, 0x39d353, 0x39d353])
+  theme.remove()
+  onThemeChange()
+  expect(calendarColors()).toEqual(expectedColors('square-root'))
+})
+
+it('can reinitialize the same calendar without sampling scaled 2D colors for 3D', async () => {
+  mockChromeStorage({ heightScale: 'logarithmic' })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() =>
+    expect(calendarColors()).toEqual(expectedColors('logarithmic'))
+  )
+  const originalColors = [...renderedColors]
+  onNavigate()
+  expect(renderedColors).toEqual(originalColors)
+  expect(calendarColors()).toEqual(expectedColors('logarithmic'))
+  expect(document.querySelectorAll('#ic-calendar-scale-label')).toHaveLength(1)
+})
 
 it('falls back to linear for an unrecognized stored height scale', async () => {
   localStorage.setItem('heightScale', 'unknown')

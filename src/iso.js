@@ -1,3 +1,4 @@
+import { renderCalendarIntensity } from './calendar.js'
 import { fetchExtendedStreakData } from './history.js'
 import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 import {
@@ -273,8 +274,10 @@ const setContainerViewType = (type) => {
 const getSquareColor = (rect) => getElementColor(rect)
 
 const refreshColors = () => {
-  const dayElements = document.querySelectorAll(
-    '.js-calendar-graph-table tbody td.ContributionCalendar-day'
+  // Read original palette levels for 3D colors, not scaled 2D intensity.
+  calendarGraph.classList.remove('ic-calendar-scaled')
+  const dayElements = calendarGraph.querySelectorAll(
+    '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
   )
   for (const d of days) {
     const element = [...dayElements].find(
@@ -287,8 +290,8 @@ const refreshColors = () => {
 }
 
 const loadStats = () => {
-  const dayElements = document.querySelectorAll(
-    '.js-calendar-graph-table tbody td.ContributionCalendar-day'
+  const dayElements = calendarGraph.querySelectorAll(
+    '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
   )
   const tooltipElements = document.querySelectorAll(
     '.js-calendar-graph tool-tip'
@@ -417,6 +420,11 @@ const renderIsometricChart = () => {
   }
 }
 
+const renderCharts = () => {
+  renderCalendarIntensity(calendarGraph, days, maxCount, heightScale)
+  renderIsometricChart()
+}
+
 const renderStats = () => {
   const graphHeaderText = document.querySelector('.ic-contributions-wrapper')
     .parentNode.previousElementSibling.textContent
@@ -463,10 +471,11 @@ const generateIsometricChart = () => {
   contributionsBox = document.querySelector('.js-yearly-contributions')
 
   resetValues()
+  calendarGraph.classList.remove('ic-calendar-scaled')
   initUI()
   loadStats()
   renderStats()
-  renderIsometricChart()
+  renderCharts()
 
   extendStreakDataAndUpdate()
 }
@@ -509,7 +518,7 @@ const generateIsometricChart = () => {
       if (heightScale === nextScale) return
       heightScale = nextScale
       if (document.querySelector('.ic-contributions-wrapper')) {
-        renderIsometricChart()
+        renderCharts()
       }
     })
   }
@@ -519,9 +528,19 @@ const generateIsometricChart = () => {
     .addEventListener('change', () => {
       if (document.querySelector('.ic-contributions-wrapper')) {
         refreshColors()
-        renderIsometricChart()
+        renderCharts()
       }
     })
+
+  new MutationObserver(() => {
+    if (document.querySelector('.ic-contributions-wrapper')) {
+      refreshColors()
+      renderCharts()
+    }
+  }).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-color-mode', 'data-light-theme', 'data-dark-theme']
+  })
 
   setupObserver()
   document.addEventListener('turbo:load', setupObserver)
@@ -530,7 +549,8 @@ const generateIsometricChart = () => {
       document.visibilityState === 'visible' &&
       document.querySelector('.ic-contributions-wrapper')
     ) {
-      renderIsometricChart()
+      refreshColors()
+      renderCharts()
     }
   })
 })()
