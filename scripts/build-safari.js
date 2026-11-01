@@ -26,6 +26,8 @@ const SOURCE_FILES = [
   'iso.js',
   'iso.css',
   'obelisk.min.js',
+  'icon-16.png',
+  'icon-32.png',
   'icon-48.png',
   'icon-128.png',
   'popup.html',
@@ -94,7 +96,9 @@ function syncResources() {
           const license = source.match(/^\/\*![\s\S]*?\*\//)?.[0]
           if (license) content = `${license}\n${content}`
         }
-        if (original.endsWith('.html')) content = `${content.trimEnd()}\n`
+        if (original.endsWith('.html')) {
+          content = `${content.replace(/[\t ]+$/gm, '').trimEnd()}\n`
+        }
         fs.writeFileSync(dest, content)
       } else {
         fs.copyFileSync(src, dest)
@@ -105,15 +109,15 @@ function syncResources() {
     }
   }
 
-  // Keep the copied manifest aligned with the source identity and unhashed
-  // Safari resource names, including the toolbar popup and homepage.
-  let safariManifest = JSON.stringify(manifest, null, 2)
-  for (const [hashed, original] of hashToOriginal) {
-    safariManifest = safariManifest.replaceAll(hashed, original)
-  }
+  // Keep the checked-in manifest in sync, using the unhashed Safari filenames.
+  const manifestText = JSON.stringify(
+    manifest,
+    (_key, value) => hashToOriginal.get(value) || value,
+    2
+  )
   fs.writeFileSync(
     path.join(resourcesDir, 'manifest.json'),
-    `${safariManifest}\n`
+    `${manifestText}\n`
   )
 
   console.log('Resources synced.\n')

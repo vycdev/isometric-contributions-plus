@@ -195,6 +195,16 @@ const initUI = () => {
   canvas.style.width = '100%'
   contributionsWrapper.append(canvas)
 
+  const legend = document.createElement('div')
+  legend.className =
+    'ic-contribution-legend position-absolute bottom-0 right-0 mr-5 mb-3 text-small color-fg-muted'
+  legend.setAttribute('role', 'img')
+  legend.setAttribute('aria-label', 'Contribution activity, from less to more')
+  legend.innerHTML = `Less ${[0, 1, 2, 3, 4]
+    .map((level) => `<span data-level="${level}"></span>`)
+    .join('')} More`
+  contributionsWrapper.append(legend)
+
   // Inject toggle
   const heading = contributionsBox.querySelector('h2')
 

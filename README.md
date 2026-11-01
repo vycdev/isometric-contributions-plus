@@ -6,11 +6,15 @@ This is a browser extension for Chrome/Brave and Firefox that lets you toggle be
 
 This independent fork is maintained at [vycdev/isometric-contributions-plus](https://github.com/vycdev/isometric-contributions-plus), based on [Jason Long's Isometric Contributions](https://github.com/jasonlong/isometric-contributions). [中文说明](README-zh.md).
 
+The extension uses blue by default across the 2D calendar, isometric graph, legends, statistics, and settings. Inactive days remain neutral. Light and dark palettes follow GitHub's appearance setting; the toolbar menu follows your system appearance.
+
 Besides being sort of neat looking, this view is interesting in that it highlights the differences between the number of contributions with more granularity. This isn't meant to completely replace the standard 2D graph though, because in most ways it is actually less useful. For example, there are no axis labels, shorter bars can be hidden behind taller ones, you can't hover over a bar to see the day and count, etc.
 
 <img src="img/preview.png" width="1052" />
 
-The preview uses inherited artwork. Plus artwork and screenshots are being updated separately in [issue #1](https://github.com/vycdev/isometric-contributions-plus/issues/1).
+<img src="img/preview-dark.png" width="1052" />
+
+Screenshots use sample contribution data.
 
 ## Contribution scale
 
@@ -27,6 +31,9 @@ The 2D colors interpolate through the current palette; legend swatches represent
 ### Palette integration
 
 `contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) and color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
+
+<img src="img/settings-light.png" width="328" alt="Blue settings menu in light mode" />
+<img src="img/settings-dark.png" width="328" alt="Blue settings menu in dark mode" />
 
 ## Installation
 
@@ -93,6 +100,16 @@ directly because Firefox submission and ZIP packaging use its executable.
 authenticates or uploads. See [PUBLISHING.md](PUBLISHING.md) before configuring store accounts.
 
 Report bugs, ask support questions, and discuss contributions in [this fork's issues](https://github.com/vycdev/isometric-contributions-plus/issues). Use `pnpm run start` for watch mode, `pnpm run test:unit` for unit tests, and `pnpm test` for formatting, lint, and unit checks. See [PUBLISHING.md](PUBLISHING.md) for pending store-account and private-contact setup. Never use upstream publisher accounts for this fork.
+
+<img src="img/dev-mode.png" width="981" />
+
+After changes, rebuild, then click **Reload** under the extension entry. Refresh open GitHub pages to reload the content script.
+
+<img src="img/reload-link.png" width="410" />
+
+### Theme and artwork
+
+Shared light/dark palette tokens live in [`src/theme.css`](src/theme.css). See [`scripts/artwork/README.md`](scripts/artwork/README.md) for the color/scaling integration contract and the reproducible icon, screenshot, and visual-check workflow.
 
 ## Related projects
 

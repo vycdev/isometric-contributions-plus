@@ -20,7 +20,7 @@ Configure these values only after creating listings and publisher accounts for t
 | Firefox | `FIREFOX_ADDON_SLUG`, `AMO_API_KEY`, `AMO_API_SECRET` | Register the Plus add-on ID, record its actual slug, and create AMO API credentials. |
 | Edge | `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, `EDGE_API_KEY` | Register a Plus product and configure Partner Center API credentials. |
 
-In Actions, the Chrome publisher ID and Firefox slug use repository **variables**; the remaining browser-store values use **secrets**. `release.yml` validates configuration before version commits, tags, builds, or uploads. Missing or blank values report their variable names and this document, without printing values. Configuration checks only establish presence, not ownership or validity.
+In Actions, the Chrome publisher ID and Firefox slug use repository **variables**; the remaining browser-store values use **secrets**. `release.yml` validates configuration before version commits, tags, or builds, then preflights every selected store and artifact before the first upload. Missing or blank values report their variable names and this document, without printing values. Configuration checks only establish presence, not ownership or validity.
 
 Safe local checks:
 
@@ -33,13 +33,15 @@ node --test scripts/publishing.test.js
 
 `--check-config` needs no build artifacts. Before any upload, all selected packages and the Firefox source identity are checked. `--dry-run` is offline, checks configuration/artifacts, and never authenticates, uploads, or changes metadata. Run `pnpm run build:firefox` immediately before submitting Firefox because other builds overwrite `dist/`; `pnpm run build:all` leaves the Firefox build there.
 
+`pnpm run submit:all --preflight` checks configuration, artifacts, and the remote Firefox listing identity without uploading or changing metadata. It can make an authenticated read request to AMO; use `--dry-run` for an offline check. Release CI uses this mode with the selected target before its individual upload steps. Choose exactly one target and at most one of `--check-config`, `--dry-run`, or `--preflight`; unknown options and conflicting modes fail before external actions.
+
 For real Firefox submission or metadata updates, the helper first reads the configured slug through the [AMO detail API](https://mozilla.github.io/addons-server/topics/api/addons.html#detail) and requires its `guid` to match the Plus add-on ID. An unrelated/missing identity or failed lookup stops the operation before any selected store receives an upload. Metadata writes address the immutable Plus ID rather than the mutable slug. These remote checks are skipped for offline dry runs and configuration checks. Actual submission commands perform external writes and require a separate, deliberate publishing action.
 
 After publication, verify each Plus listing's owner and destination before adding its real URL to both READMEs. Do not infer URLs from the product name. First-time store registration and listing metadata are maintainer tasks; these helpers update existing listings.
 
 ## Safari
 
-Debug/native development requires macOS and Xcode. Existing project directories and the `Isometric Contributions` Xcode target/scheme names are retained so scripts and relative resources resolve. The built products, display names, menus, popup, bundle IDs, and runtime extension lookup use Plus identity. Artwork remains the separate scope of issue #1.
+Debug/native development requires macOS and Xcode. Existing project directories and the `Isometric Contributions` Xcode target/scheme names are retained so scripts and relative resources resolve. The built products, display names, menus, popup, bundle IDs, and runtime extension lookup use Plus identity. The blue theme and artwork from issue #1 / PR #8 are included through the shared base.
 
 Signed Release builds require:
 
@@ -68,7 +70,7 @@ The issue #9 audit covered every tracked file, including hidden workflows/config
 - Retain Jason Long's original MIT copyright in `LICENSE`, Swift creation headers, and explicit upstream attribution in both READMEs. Keep vendored obelisk.js author/license notices, dependency URLs, Apple plist DTDs, and Contributor Covenant links.
 - `test-extension.js` intentionally uses `https://github.com/jasonlong` as an active-profile test fixture, alongside the inactive `dork` profile. Neither is a support or publisher destination.
 - The `isometric-contributions` canvas ID, test selectors, Xcode source directories/target/scheme labels, and GitHub content-script match patterns remain internal compatibility references, not the fork's public name or repository URL.
-- Qiuner's similarly named repository remains a clearly labeled separate related project. The original PNG artwork and installation screenshots remain inherited binary assets for issue #1 / PR #8; stale installation screenshots are no longer used as current instructions. The missing `img/preview-dark.png` reference has been removed.
+- Qiuner's similarly named repository remains a clearly labeled separate related project. The current Plus artwork and installation/settings screenshots come from the shared base's merged PR #8; both READMEs retain its light/dark previews and artwork documentation.
 - Package download/funding links and third-party tooling contacts are dependency metadata. No operational link should use the obsolete pre-rename fork URL.
-- [PR #8 / issue #1](https://github.com/vycdev/isometric-contributions-plus/pull/8) overlaps on display names, READMEs, artwork, and generated Safari resources. Keep Plus names/support/download guidance from this change, adopt its artwork, and regenerate Safari resources after integration.
+- [PR #8 / issue #1](https://github.com/vycdev/isometric-contributions-plus/pull/8) is included through the shared base. Its blue artwork, theme descriptions, four icon sizes, and source integration contract are preserved alongside this change's support/download/publishing guidance. Safari resources are regenerated from the combined source.
 - [PR #7 / issue #4](https://github.com/vycdev/isometric-contributions-plus/pull/7) overlaps on scripts, workflows, package metadata, and installation commands. Preserve its pnpm launcher/ZIP changes while retaining this change's shared artifact names, publishing guards, fork IDs, and workflow variables. Regenerate browser/Safari resources after integration. The pnpm tooling from PR #7 is now included through the shared base; preserve its launcher and portable ZIP behavior when integrating identity changes.

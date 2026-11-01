@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { parseArgs } from 'node:util'
 import { pnpmCommand } from './pnpm.js'
 import {
   ARTIFACT_NAMES,
@@ -19,7 +20,32 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const artifactsDir = path.join(rootDir, 'artifacts')
 
-const dryRun = process.argv.includes('--dry-run')
+const usage =
+  'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run|--check-config|--preflight]'
+let args
+try {
+  args = parseArgs({
+    options: {
+      'dry-run': { type: 'boolean' },
+      'check-config': { type: 'boolean' },
+      preflight: { type: 'boolean' }
+    },
+    allowPositionals: true
+  })
+} catch (error) {
+  console.error(error.message)
+  console.error(usage)
+  process.exit(1)
+}
+if (
+  args.positionals.length !== 1 ||
+  Object.values(args.values).filter(Boolean).length > 1
+) {
+  console.error(usage)
+  process.exit(1)
+}
+const target = args.positionals[0]
+const dryRun = Boolean(args.values['dry-run'])
 
 function checkEnvVars(vars) {
   const missing = vars.filter((v) => !process.env[v])
@@ -295,15 +321,6 @@ async function submitAll() {
   }
 }
 
-const target = process.argv.slice(2).find((a) => !a.startsWith('--'))
-
-if (!target) {
-  console.error(
-    'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run|--check-config]'
-  )
-  process.exit(1)
-}
-
 const handlers = {
   chrome: submitChrome,
   firefox: submitFirefox,
@@ -312,11 +329,9 @@ const handlers = {
   all: submitAll
 }
 
-if (!handlers[target]) {
+if (!Object.hasOwn(handlers, target)) {
   console.error(`Unknown target: ${target}`)
-  console.error(
-    'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run|--check-config]'
-  )
+  console.error(usage)
   process.exit(1)
 }
 
@@ -326,13 +341,19 @@ if (dryRun) {
 
 async function main() {
   requirePublishingConfig(target)
-  if (process.argv.includes('--check-config')) {
+  if (args.values['check-config']) {
     console.log('Fork publishing configuration is present (not verified).')
     return
   }
   checkSubmissionArtifacts(target)
   if (!dryRun && ['firefox', 'firefox-metadata', 'all'].includes(target)) {
     await verifyFirefoxListing()
+  }
+  if (args.values.preflight) {
+    console.log(
+      'Store preflight passed; no upload or metadata change was performed.'
+    )
+    return
   }
   await handlers[target]()
 }

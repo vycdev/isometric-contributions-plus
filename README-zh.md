@@ -1,4 +1,4 @@
-# Isometric Contributions Plus（立体贡献图扩展）
+# Isometric Contributions Plus
 
 [英文版](README.md) | 中文版
 
@@ -6,9 +6,26 @@
 
 这是 [vycdev 维护的独立分支](https://github.com/vycdev/isometric-contributions-plus)，基于 [Jason Long 的 Isometric Contributions](https://github.com/jasonlong/isometric-contributions)。本扩展支持 Chrome / Brave、Firefox 和 Edge，并包含 Safari 项目，让你能够在 GitHub 用户档案页面的贡献图处，切换显示原生 2D 图与立体像素版贡献图。我们使用了 [obelisk.js](https://github.com/nosir/obelisk.js) 用于绘制立体图像。
 
-除了看起来更整洁干净外，我们的立体图像还很是有趣。它以更高的精细度，突出显示了贡献数量之间的差异。但是这并不意味着完全替代标准2D图形，因为在大多数情况下，它其实也就是个花瓶。例如，图像没有轴标签，较短的条形图可能会被隐藏在较高的条形图后面，而且在我们将鼠标悬停在条形图上时候，我们无法查看到日期和计数等。
+默认蓝色主题覆盖日历、立体图、图例、统计与设置。无活动的日期保持中性色。图表配色跟随 GitHub 的外观设置，工具栏菜单跟随系统外观。以下截图使用示例数据。
 
-<img src="img/preview.png" width="1052" />
+<img src="img/preview.png" width="1052" alt="浅色蓝色贡献图" />
+
+<img src="img/preview-dark.png" width="1052" alt="深色蓝色贡献图" />
+
+立体图可以展示贡献数量之间的细微差异，但也有局限：没有坐标轴标签，较高的柱子可能遮挡较矮的柱子，且无法悬停查看日期和数量。需要这些信息时，可切换到 2D 或同时显示两种视图。
+
+## 贡献缩放
+
+点击扩展的工具栏图标，在 Contribution scale 中选择 3D 柱高与 2D 颜色强度的缩放方式：
+
+- **Linear（线性，默认）**：柱高与颜色强度均与每日贡献数量成正比。
+- **Square root（平方根）**：适度提升日常活动的可见度，同时保留峰值差异。
+- **Logarithmic（对数）**：进一步降低异常峰值的视觉影响，使较少的日常活动更容易辨识。
+
+设置会自动保存，跨个人主页、年份和页面刷新生效，并立即更新 2D、3D 与同时显示模式。当前缩放方式显示在每日平均值旁边与 2D 图例下方。缩放改变 3D 柱高与 2D 颜色强度；日历方块尺寸、日期、贡献数量、提示信息与统计数据保持不变。无活动的日期保持中性色，最繁忙的可见日期达到最大强度。
+
+<img src="img/settings-light.png" width="328" alt="浅色设置菜单" />
+<img src="img/settings-dark.png" width="328" alt="深色设置菜单" />
 
 ## 安装方式
 
@@ -35,7 +52,10 @@ pnpm run build
 
 商店账号和私人举报联系方式仍待维护者配置，详见 [PUBLISHING.md](PUBLISHING.md)。公开 issue 中请勿包含私人信息或敏感证据，也不要把本分支的支持或行为准则举报发送给原项目维护者。
 
-预览沿用原项目图像；Plus 视觉素材由 [issue #1](https://github.com/vycdev/isometric-contributions-plus/issues/1) 单独更新。
+<img src="img/dev-mode.png" width="981" alt="启用开发者模式并加载扩展" />
+<img src="img/reload-link.png" width="410" alt="重新加载扩展" />
+
+共享配色位于 [`src/theme.css`](src/theme.css)。图标、截图的生成方法以及与颜色自定义、2D 缩放的集成约定，见 [`scripts/artwork/README.md`](scripts/artwork/README.md)。
 
 ## 相关项目
 

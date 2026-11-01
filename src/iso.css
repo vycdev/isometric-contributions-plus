@@ -1,3 +1,67 @@
+@import "./theme.css";
+
+/* Keep GitHub's calendar and legend aliases on the same palette as the cubes. */
+.js-yearly-contributions {
+  --contribution-default-bgColor-0: var(--ic-level-0);
+  --contribution-default-bgColor-1: var(--ic-level-1);
+  --contribution-default-bgColor-2: var(--ic-level-2);
+  --contribution-default-bgColor-3: var(--ic-level-3);
+  --contribution-default-bgColor-4: var(--ic-level-4);
+  --color-calendar-graph-day-bg: var(--ic-level-0);
+  --color-calendar-graph-day-L1-bg: var(--ic-level-1);
+  --color-calendar-graph-day-L2-bg: var(--ic-level-2);
+  --color-calendar-graph-day-L3-bg: var(--ic-level-3);
+  --color-calendar-graph-day-L4-bg: var(--ic-level-4);
+}
+
+.js-yearly-contributions [data-level="0"] {
+  --ic-day-color: var(--ic-level-0);
+}
+
+.js-yearly-contributions [data-level="1"] {
+  --ic-day-color: var(--ic-level-1);
+}
+
+.js-yearly-contributions [data-level="2"] {
+  --ic-day-color: var(--ic-level-2);
+}
+
+.js-yearly-contributions [data-level="3"] {
+  --ic-day-color: var(--ic-level-3);
+}
+
+.js-yearly-contributions [data-level="4"] {
+  --ic-day-color: var(--ic-level-4);
+}
+
+.js-yearly-contributions .ContributionCalendar-day[data-level] {
+  fill: var(--ic-day-color) !important;
+  background-color: var(--ic-day-color) !important;
+}
+
+.ic-contributions-wrapper .ic-accent {
+  color: var(--ic-accent);
+}
+
+.ic-contribution-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ic-contribution-legend span {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #80808033;
+  border-radius: 2px;
+  background: var(--ic-day-color);
+}
+
+.js-yearly-contributions .ic-toggle-option.selected {
+  color: var(--ic-accent);
+  background: var(--ic-selected);
+}
+
 /* Normal chart display (2D only) */
 .ic-squares #isometric-contributions,
 .ic-squares .ic-contributions-wrapper {
@@ -18,6 +82,5 @@
 
 /* Only the visual encoding changes; GitHub owns square sizes and layout. */
 .ic-calendar-scaled .ContributionCalendar-day[data-date] {
-  background-color: var(--ic-intensity-color);
-  fill: var(--ic-intensity-color);
+  --ic-day-color: var(--ic-intensity-color);
 }

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Isometric Contributions Plus</title>
+  <!-- Four stacked cubes retain the original extension's silhouette. -->
+  <path fill="#1758a6" d="m64 0 22 12-22 13-22-13Z"/>
+  <path fill="#0b3061" d="m42 12 22 13v52L42 64Z"/>
+  <path fill="#104781" d="m64 25 22-13v52L64 77Z"/>
+  <path fill="#388bfd" d="m86 32 22 12-22 13-22-13Z"/>
+  <path fill="#1758a6" d="m64 44 22 13v52L64 96Z"/>
+  <path fill="#246dcb" d="m86 57 22-13v52l-22 13Z"/>
+  <path fill="#80baff" d="m42 52 22 12-22 13-22-13Z"/>
+  <path fill="#388bfd" d="m20 64 22 13v39l-22-13Z"/>
+  <path fill="#58a6ff" d="m42 77 22-13v39l-22 13Z"/>
+  <path fill="#b6d9ff" d="m64 84 22 12-22 13-22-13Z"/>
+  <path fill="#80baff" d="m42 96 22 13v19l-22-12Z"/>
+  <path fill="#9bcaff" d="m64 109 22-13v20l-22 12Z"/>
+</svg>

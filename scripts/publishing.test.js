@@ -204,6 +204,44 @@ test('configured dry runs and config checks perform no external actions', (t) =>
   assert.equal(fs.existsSync(path.join(dir, 'calls.json')), false)
 })
 
+test('malformed submission arguments fail before any external action', (t) => {
+  const dir = fixture(t)
+  for (const args of [
+    ['chrome', '--dryrun'],
+    ['chrome', '--check-confg'],
+    ['chrome', 'edge'],
+    ['chrome', '--dry-run', '--check-config'],
+    ['chrome', '--dry-run=true']
+  ]) {
+    const result = runSubmit(dir, args, {}, true)
+    assert.equal(result.status, 1, `${args}: ${result.stdout}`)
+    assert.match(result.stderr, /Usage:/)
+    assert.equal(fs.existsSync(path.join(dir, 'calls.json')), false)
+  }
+})
+
+test('store preflight verifies Firefox identity without uploading or changing metadata', (t) => {
+  for (const target of [
+    'all',
+    'firefox',
+    'firefox-metadata',
+    'chrome',
+    'edge'
+  ]) {
+    const dir = fixture(t)
+    const result = runSubmit(dir, [target, '--preflight'], {}, true)
+    assert.equal(result.status, 0, result.stderr)
+    const file = path.join(dir, 'calls.json')
+    if (['all', 'firefox', 'firefox-metadata'].includes(target)) {
+      const calls = JSON.parse(fs.readFileSync(file, 'utf8'))
+      assert.equal(calls.length, 1)
+      assert.equal(calls[0].method, 'GET')
+    } else {
+      assert.equal(fs.existsSync(file), false)
+    }
+  }
+})
+
 test('Firefox rejects an unrelated or unidentified listing before any store upload or metadata change', (t) => {
   const dir = fixture(t)
   for (const target of ['firefox', 'firefox-metadata', 'all']) {
@@ -350,6 +388,8 @@ test('Safari resource sync refreshes manifest identity and resolves the copied p
     'iso.js',
     'iso.css',
     'obelisk.min.js',
+    'icon-16.png',
+    'icon-32.png',
     'icon-48.png',
     'icon-128.png',
     'popup.html',
