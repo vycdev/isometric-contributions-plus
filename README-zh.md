@@ -29,6 +29,17 @@
 
 ## 贡献
 
+开发环境使用 Node.js 22 或 24，以及 `package.json` 中固定的 pnpm 10.34.9。
+启用或安装 pnpm 的步骤与完整命令见 [Contributing](README.md#contributing)。
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
+```
+
+开发时加载构建生成的 `dist/` 目录；修改后可用 `pnpm run start` 持续构建。
+
 如果您想自定义扩展程序，那么你可能需要手动安装它。首先先克隆或分叉此仓库，然后，在 Chrome 扩展程序 页面上，选中 “开发人员模式，点击 “加载已解压缩的扩展程序……” 按钮，然后选定仓库所在的文件夹即可。
 
 <img src="img/dev-mode.png" width="981" />

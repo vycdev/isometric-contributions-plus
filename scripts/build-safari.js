@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { pnpmCommand } from './pnpm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -123,10 +124,13 @@ function buildXcode(configuration = 'Debug') {
 
 function buildParcel() {
   console.log('Running Parcel build...\n')
-  execSync('npx parcel build src/manifest.json', {
-    cwd: rootDir,
-    stdio: 'inherit'
-  })
+  execFileSync(
+    ...pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json']),
+    {
+      cwd: rootDir,
+      stdio: 'inherit'
+    }
+  )
   console.log()
 }
 

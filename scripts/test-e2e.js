@@ -3,6 +3,7 @@
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { pnpmCommand } from './pnpm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -46,7 +47,7 @@ const run = (command, args) => {
 }
 
 const main = async () => {
-  const buildCode = await run('npm', ['run', 'build:chrome'])
+  const buildCode = await run(...pnpmCommand(['run', 'build:chrome']))
   if (buildCode !== 0) {
     process.exit(buildCode)
   }

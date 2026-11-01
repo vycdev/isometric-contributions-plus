@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { pnpmCommand } from './pnpm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -34,7 +35,7 @@ function checkArtifact(zipName) {
   const zipPath = path.join(artifactsDir, zipName)
   if (!fs.existsSync(zipPath)) {
     console.error(`Artifact not found: ${zipPath}`)
-    console.error('Run "npm run build:all" first')
+    console.error('Run "pnpm run build:all" first')
     process.exit(1)
   }
 
@@ -139,10 +140,10 @@ async function submitChrome() {
     return
   }
 
-  const args = ['chrome-webstore-upload-cli', '--source', zipPath]
+  const args = ['chrome-webstore-upload', '--source', zipPath]
 
   try {
-    execFileSync('npx', args, {
+    execFileSync(...pnpmCommand(['exec', ...args]), {
       cwd: rootDir,
       stdio: 'inherit',
       env: {
@@ -203,7 +204,7 @@ async function submitFirefox() {
   ]
 
   try {
-    execFileSync('npx', args, {
+    execFileSync(...pnpmCommand(['exec', ...args]), {
       cwd: rootDir,
       stdio: 'inherit',
       env: {

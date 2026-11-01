@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { pnpmCommand } from './pnpm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -31,7 +32,10 @@ function readManifest() {
 
 function writeManifest(manifest) {
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-  execSync(`npx biome format --write ${manifestPath}`, { stdio: 'ignore' })
+  execFileSync(
+    ...pnpmCommand(['exec', 'biome', 'format', '--write', manifestPath]),
+    { cwd: rootDir, stdio: 'ignore' }
+  )
 }
 
 function updateSafariVersion(newVersion) {
