@@ -37,9 +37,52 @@ Open GitHub charts update immediately when you change the setting. The selected 
 
 ## Contributing
 
+Use Node.js 22 or 24 (`.nvmrc` selects 22) and **pnpm 10.34.9**, pinned in
+`package.json`. With a current [Corepack](https://pnpm.io/10.x/installation#using-corepack)
+installation, run `corepack enable pnpm`; Corepack reads the project pin. If
+Corepack is unavailable, bootstrap pnpm once with `npm install --global pnpm@10.34.9`.
+Then run:
+
+```sh
+pnpm --version
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run build
+```
+
+On Windows, clone with `git -c core.autocrlf=false clone <repository-url>` so
+checkout preserves the LF line endings expected by Biome. The Windows CI jobs
+also preserve LF during checkout; existing CRLF checkouts may need their line
+endings corrected before the full formatting check passes.
+
+Commit `pnpm-lock.yaml` when dependencies change. It was imported from the npm
+lockfile to retain existing resolutions. Dependabot intentionally uses its `npm`
+ecosystem setting, which also supports pnpm's v9 lockfile. Overrides and install
+script decisions live in `pnpm-workspace.yaml`. Parcel's native dependencies and
+Puppeteer's browser download are approved there; new install scripts require an
+explicit decision (`pnpm approve-builds`) before a clean install succeeds.
+
+Useful contributor commands:
+
+- `pnpm run start`: watch the extension during development.
+- `pnpm run test:unit` / `pnpm run test:tooling`: run the unit or helper checks independently.
+- `pnpm run test:e2e`: ensure Puppeteer's pinned Chrome is downloaded, build the extension, and run the live GitHub health check. The browser download is checked explicitly because a restored pnpm store can skip install scripts without restoring Puppeteer's separate cache.
+- `pnpm run build:all`: create Chrome, Edge, and Firefox ZIPs in `artifacts/` using the local `web-ext` tool; no system `zip` command is required.
+- `pnpm run build:safari --resources-only`: build and sync Safari resources on any platform.
+- `pnpm run build:safari` / `pnpm run build:safari:release`: also build the macOS app (requires macOS and Xcode).
+- `pnpm run version:get` / `pnpm run version:patch`: inspect or bump extension and Safari versions; minor, major, and `pnpm run version:set X.Y.Z` variants are also available.
+- `pnpm run submit:chrome`, `pnpm run submit:edge`, `pnpm run submit:firefox`, and `pnpm run release`: publish using the configured store credentials.
+
+Run script helpers through their `pnpm run` commands so child processes reuse
+the pinned pnpm CLI on Windows, macOS, and Linux, including standalone pnpm
+installations. Local tools use `pnpm exec` and do not download an unpinned CLI. `web-ext` is declared
+directly because Firefox submission and ZIP packaging use its executable.
+`pnpm run submit:dry-run` does not publish, but it requires store credentials and
+contacts Google's token endpoint to validate them; it is not an offline check.
+
 **_Note that I don't currently have any plans for adding new features to the extension. Please contact me before submitting a PR with new functionality._**
 
-If you want to hack on the extension, you'll need to install it manually. First clone or fork this repo. Then, on your Chrome Extensions page, make sure "Developer mode" is checked. You can then click the "Load unpacked extension..." button and browse to the `src` directory of this repo.
+If you want to hack on the extension, you'll need to install it manually. First clone or fork this repo and install and build it with the commands above. Then, on your Chrome Extensions page, make sure "Developer mode" is checked. You can then click the "Load unpacked extension..." button and browse to the generated `dist` directory of this repo.
 
 <img src="img/dev-mode.png" width="981" />
 

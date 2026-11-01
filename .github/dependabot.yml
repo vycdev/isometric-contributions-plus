@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # GitHub uses the npm ecosystem for pnpm, including pnpm-lock.yaml v9.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:

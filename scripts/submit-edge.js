@@ -79,7 +79,7 @@ async function main() {
 
   if (!fs.existsSync(zipPath)) {
     console.error(`Artifact not found: ${zipPath}`)
-    console.error('Run "npm run build:edge" first')
+    console.error('Run "pnpm run build:edge" first')
     process.exit(1)
   }
 

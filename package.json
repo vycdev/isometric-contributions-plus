@@ -1,5 +1,6 @@
 {
   "type": "module",
+  "packageManager": "pnpm@10.34.9",
   "engines": {
     "node": ">=22.0"
   },
@@ -14,10 +15,13 @@
     "build:all": "node scripts/build.js all",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "test": "biome check && vitest run",
+    "test": "biome check && pnpm run test:unit && pnpm run test:tooling",
+    "test:unit": "vitest run",
+    "test:tooling": "node --test scripts/pnpm.test.js scripts/build.test.js scripts/test-e2e.test.js",
     "test:e2e": "node scripts/test-e2e.js",
     "test:watch": "vitest",
     "version:get": "node scripts/version.js get",
+    "version:set": "node scripts/version.js set",
     "version:patch": "node scripts/version.js patch",
     "version:minor": "node scripts/version.js minor",
     "version:major": "node scripts/version.js major",
@@ -27,7 +31,7 @@
     "submit:firefox:metadata": "node scripts/submit.js firefox-metadata",
     "submit:all": "node scripts/submit.js all",
     "submit:dry-run": "node scripts/submit.js all --dry-run",
-    "release": "npm run build:all && npm run submit:all"
+    "release": "pnpm run build:all && pnpm run submit:all"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
@@ -39,6 +43,7 @@
     "parcel": "^2.16.4",
     "puppeteer": "^25.16.0",
     "vitest": "^5.0.5",
+    "web-ext": "^9.2.0",
     "web-ext-submit": "^7.8.0"
   },
   "targets": {
@@ -47,8 +52,5 @@
         "browsers": ">= 50%"
       }
     }
-  },
-  "overrides": {
-    "web-ext": "^9.2.0"
   }
 }
