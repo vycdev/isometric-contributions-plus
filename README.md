@@ -1,14 +1,18 @@
-# Isometric Contributions extension
+# Isometric Contributions Plus
 
 [![Node.js CI status](https://img.shields.io/github/actions/workflow/status/vycdev/isometric-contributions-plus/nodejs.yml?label=CI)](https://github.com/vycdev/isometric-contributions-plus/actions/workflows/nodejs.yml) [![MIT license](https://img.shields.io/github/license/vycdev/isometric-contributions-plus)](LICENSE) [![Support on Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
 
 This is a browser extension for Chrome/Brave and Firefox that lets you toggle between your regular GitHub contribution chart and an isometric pixel art version. It uses [obelisk.js](https://github.com/nosir/obelisk.js) for the isometric graphics.
+
+This independent fork of [Jason Long's Isometric Contributions](https://github.com/jasonlong/isometric-contributions) uses blue by default across the 2D calendar, isometric graph, legends, statistics, and settings. Inactive days remain neutral. Light and dark palettes follow GitHub's appearance setting; the toolbar menu follows your system appearance.
 
 Besides being sort of neat looking, this view is interesting in that it highlights the differences between the number of contributions with more granularity. This isn't meant to completely replace the standard 2D graph though, because in most ways it is actually less useful. For example, there are no axis labels, shorter bars can be hidden behind taller ones, you can't hover over a bar to see the day and count, etc.
 
 <img src="img/preview.png" width="1052" />
 
 <img src="img/preview-dark.png" width="1052" />
+
+Screenshots use sample contribution data.
 
 ## Contribution scale
 
@@ -24,23 +28,25 @@ The 2D colors interpolate through the current palette; legend swatches represent
 
 ### Palette integration
 
-`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) and color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
+`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) supplies those palette stops; custom color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
+
+<img src="img/settings-light.png" width="328" alt="Blue settings menu in light mode" />
+<img src="img/settings-dark.png" width="328" alt="Blue settings menu in dark mode" />
 
 ## Installation
 
-### Chrome/Brave
+The original extension's store listings distribute the original project. To try **Isometric Contributions Plus**, build this fork locally:
 
-[Install from the Chrome Web Store](https://chrome.google.com/webstore/detail/isometric-contributions/mjoedlfflcchnleknnceiplgaeoegien?hl=en&gl=US)
+```sh
+pnpm install --frozen-lockfile
+pnpm run build
+```
 
-### Firefox
-
-[Install from Mozilla Add-ons site](https://addons.mozilla.org/en-US/firefox/addon/github-isometric-contributions/)
-
-### Microsoft Edge
-
-[Install from Microsoft Edge Add-ons site](https://microsoftedge.microsoft.com/addons/detail/github-isometric-contribu/hcicbpfcbdpfgibhlbphodkcbojakpej)
+In Chrome, Brave, or Edge, open the Extensions page, enable **Developer mode**, click **Load unpacked**, and select the generated `dist` directory. For Firefox packaging, run `pnpm run build:firefox`. On macOS, `pnpm run build:safari` builds the Safari app using Xcode.
 
 ## Contributing
+
+Use this fork's [issue tracker](https://github.com/vycdev/isometric-contributions-plus/issues) for changes to Isometric Contributions Plus.
 
 Use Node.js 22 or 24 (`.nvmrc` selects 22) and **pnpm 10.34.9**, pinned in
 `package.json`. With a current [Corepack](https://pnpm.io/10.x/installation#using-corepack)
@@ -85,15 +91,15 @@ directly because Firefox submission and ZIP packaging use its executable.
 `pnpm run submit:dry-run` does not publish, but it requires store credentials and
 contacts Google's token endpoint to validate them; it is not an offline check.
 
-**_Note that I don't currently have any plans for adding new features to the extension. Please contact me before submitting a PR with new functionality._**
-
-If you want to hack on the extension, you'll need to install it manually. First clone or fork this repo and install and build it with the commands above. Then, on your Chrome Extensions page, make sure "Developer mode" is checked. You can then click the "Load unpacked extension..." button and browse to the generated `dist` directory of this repo.
-
 <img src="img/dev-mode.png" width="981" />
 
-To hack on the extension, you'll first need to make sure you've installed it in Developer mode (see above). Once you've made changes to the extension, go back to the Extensions page and click the Reload link under the extension entry.
+After changes, rebuild, then click **Reload** under the extension entry. Refresh open GitHub pages to reload the content script.
 
 <img src="img/reload-link.png" width="410" />
+
+### Theme and artwork
+
+Shared light/dark palette tokens live in [`src/theme.css`](src/theme.css). See [`scripts/artwork/README.md`](scripts/artwork/README.md) for the color/scaling integration contract and the reproducible icon, screenshot, and visual-check workflow.
 
 ## Community Forks
 

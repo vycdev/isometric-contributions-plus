@@ -157,7 +157,9 @@ it.each([
     await vi.waitFor(() => expect(renderedHeights).toEqual([3, 4, 103]))
 
     const canvas = document.getElementById('isometric-contributions')
-    const stats = document.querySelector('.ic-contributions-wrapper > div')
+    const stats = document
+      .getElementById('ic-height-scale-label')
+      .closest('.position-absolute')
     const scaleLabel = document.getElementById('ic-height-scale-label')
     const statValues = () =>
       [...stats.querySelectorAll('span:not(#ic-height-scale-label)')].map(
@@ -208,6 +210,38 @@ it.each([
     expect(canvas.getAttribute('aria-label')).toContain('linear')
     expect(scaleLabel.textContent).toBe('Scale: Linear')
     expect(calendarColors()).toEqual(expectedColors('linear'))
+  }
+)
+
+it.each(['GitHub theme', 'OS preference'])(
+  'refreshes cube colors after a %s change without changing statistics or heights',
+  async (source) => {
+    showCalendar(outlierCalendar())
+    await import('./iso.js')
+    await vi.waitFor(() => expect(renderedHeights).toEqual([3, 4, 103]))
+    const originalStats = document.querySelector(
+      '.ic-contributions-wrapper'
+    ).textContent
+    const originalColors = [...renderedColors]
+    for (const cell of document.querySelectorAll('td')) {
+      cell.style.fill = 'rgb(56, 139, 253)'
+    }
+    const notify =
+      source === 'GitHub theme' ? onThemeChange : onColorSchemeChange
+    notify()
+    expect(renderedColors).toEqual([0x388bfd, 0x388bfd, 0x388bfd])
+    expect(renderedColors).not.toEqual(originalColors)
+    expect(renderedHeights).toEqual([3, 4, 103])
+    expect(
+      document.querySelector('.ic-contributions-wrapper').textContent
+    ).toBe(originalStats)
+    expect(
+      [...document.querySelectorAll('.ic-contribution-legend span')].map(
+        (node) => node.dataset.level
+      )
+    ).toEqual(['0', '1', '2', '3', '4'])
+    document.body.innerHTML = ''
+    expect(() => notify()).not.toThrow()
   }
 )
 
