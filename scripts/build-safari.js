@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { execFileSync, execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { createSafariSigningFiles } from './configure-safari.js'
 import { pnpmCommand } from './pnpm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -67,9 +68,12 @@ function syncResources() {
       const ext = f.slice(f.lastIndexOf('.'))
       return hashedName.startsWith(base) && hashedName.endsWith(ext)
     })
-    if (original) {
-      hashToOriginal.set(hashedName, original)
+    if (!original) {
+      throw new Error(
+        `No Safari resource mapping for ${hashedName}; update SOURCE_FILES.`
+      )
     }
+    hashToOriginal.set(hashedName, original)
   }
 
   // Copy each built file to Resources with its original name
@@ -84,6 +88,14 @@ function syncResources() {
             .replaceAll(`/${hashedName}`, originalName)
             .replaceAll(hashedName, originalName)
         }
+        if (original === 'obelisk.min.js') {
+          const source = fs.readFileSync(
+            path.join(rootDir, 'src', original),
+            'utf8'
+          )
+          const license = source.match(/^\/\*![\s\S]*?\*\//)?.[0]
+          if (license) content = `${license}\n${content}`
+        }
         if (original.endsWith('.html')) {
           content = `${content.replace(/[\t ]+$/gm, '').trimEnd()}\n`
         }
@@ -93,7 +105,7 @@ function syncResources() {
       }
       console.log(`  ${hashed} -> ${original}`)
     } else {
-      console.error(`  WARNING: ${src} not found`)
+      throw new Error(`Required Safari resource not found: ${src}`)
     }
   }
 
@@ -111,29 +123,33 @@ function syncResources() {
   console.log('Resources synced.\n')
 }
 
-function buildXcode(configuration = 'Debug') {
+function buildXcode(configuration = 'Debug', signingFiles) {
   console.log(`Building Xcode project (${configuration})...\n`)
 
-  const cmd = [
-    'xcodebuild build',
-    `-project "${xcodeproj}"`,
-    '-scheme "Isometric Contributions"',
-    `-configuration ${configuration}`,
-    "-destination 'platform=macOS'",
-    `-derivedDataPath "${derivedDataDir}"`
+  const args = [
+    'build',
+    '-project',
+    xcodeproj,
+    '-scheme',
+    'Isometric Contributions',
+    '-configuration',
+    configuration,
+    '-destination',
+    'platform=macOS',
+    '-derivedDataPath',
+    derivedDataDir
   ]
 
   // For Release builds in CI, allow signing overrides via env vars
-  if (configuration === 'Release' && process.env.APPLE_SIGNING_IDENTITY) {
-    cmd.push(
-      'CODE_SIGN_STYLE=Manual',
-      `CODE_SIGN_IDENTITY="${process.env.APPLE_SIGNING_IDENTITY}"`,
-      `DEVELOPMENT_TEAM="${process.env.APPLE_TEAM_ID}"`,
-      'OTHER_CODE_SIGN_FLAGS="--timestamp"'
+  if (signingFiles) {
+    args.push(
+      '-xcconfig',
+      signingFiles.xcconfigPath,
+      'OTHER_CODE_SIGN_FLAGS=--timestamp'
     )
   }
 
-  execSync(cmd.join(' \\\n  '), {
+  execFileSync('xcodebuild', args, {
     cwd: safariDir,
     stdio: 'inherit'
   })
@@ -151,19 +167,29 @@ function buildParcel() {
 
 const configuration = process.argv.includes('--release') ? 'Release' : 'Debug'
 const skipXcode = process.argv.includes('--resources-only')
+// Refuse an unconfigured signed build before running other build steps.
+let signingFiles
+if (configuration === 'Release' && !skipXcode) {
+  try {
+    signingFiles = createSafariSigningFiles()
+  } catch (error) {
+    console.error(error.message)
+    process.exit(1)
+  }
+}
 
 buildParcel()
 syncResources()
 
 if (!skipXcode) {
-  buildXcode(configuration)
+  buildXcode(configuration, signingFiles)
 
   const appPath = path.join(
     derivedDataDir,
     'Build',
     'Products',
     configuration,
-    'Isometric Contributions.app'
+    'Isometric Contributions Plus.app'
   )
   if (fs.existsSync(appPath)) {
     console.log(`\nBuild succeeded: ${appPath}`)

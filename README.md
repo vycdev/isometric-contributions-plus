@@ -4,7 +4,9 @@
 
 This is a browser extension for Chrome/Brave and Firefox that lets you toggle between your regular GitHub contribution chart and an isometric pixel art version. It uses [obelisk.js](https://github.com/nosir/obelisk.js) for the isometric graphics.
 
-This independent fork of [Jason Long's Isometric Contributions](https://github.com/jasonlong/isometric-contributions) uses blue by default across the 2D calendar, isometric graph, legends, statistics, and settings. Inactive days remain neutral. Light and dark palettes follow GitHub's appearance setting; the toolbar menu follows your system appearance.
+This independent fork is maintained at [vycdev/isometric-contributions-plus](https://github.com/vycdev/isometric-contributions-plus), based on [Jason Long's Isometric Contributions](https://github.com/jasonlong/isometric-contributions). [中文说明](README-zh.md).
+
+The extension uses blue by default across the 2D calendar, isometric graph, legends, statistics, and settings. Inactive days remain neutral. Light and dark palettes follow GitHub's appearance setting; the toolbar menu follows your system appearance.
 
 Besides being sort of neat looking, this view is interesting in that it highlights the differences between the number of contributions with more granularity. This isn't meant to completely replace the standard 2D graph though, because in most ways it is actually less useful. For example, there are no axis labels, shorter bars can be hidden behind taller ones, you can't hover over a bar to see the day and count, etc.
 
@@ -28,25 +30,31 @@ The 2D colors interpolate through the current palette; legend swatches represent
 
 ### Palette integration
 
-`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) supplies those palette stops; custom color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
+`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) and color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
 
 <img src="img/settings-light.png" width="328" alt="Blue settings menu in light mode" />
 <img src="img/settings-dark.png" width="328" alt="Blue settings menu in dark mode" />
 
 ## Installation
 
-The original extension's store listings distribute the original project. To try **Isometric Contributions Plus**, build this fork locally:
+**Plus has no verified Chrome, Firefox, Edge, or Safari store listing yet.** The original extension's store listings do not install this fork. Build locally until fork-owned listings are announced here. Any future packaged downloads belong on [this fork's Releases page](https://github.com/vycdev/isometric-contributions-plus/releases).
+
+With Node.js 22 or 24 and pnpm 10.34.9 installed (see [Contributing](#contributing)):
 
 ```sh
+git clone https://github.com/vycdev/isometric-contributions-plus.git
+cd isometric-contributions-plus
 pnpm install --frozen-lockfile
 pnpm run build
 ```
 
-In Chrome, Brave, or Edge, open the Extensions page, enable **Developer mode**, click **Load unpacked**, and select the generated `dist` directory. For Firefox packaging, run `pnpm run build:firefox`. On macOS, `pnpm run build:safari` builds the Safari app using Xcode.
+- **Chrome/Brave/Edge:** open `chrome://extensions`, `brave://extensions`, or `edge://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
+- **Firefox:** run `pnpm run build:firefox`, then open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `dist/manifest.json`. Temporary installations disappear when Firefox restarts. Packaging uses the local `web-ext` tool; no system `zip` command is required.
+- **Safari:** `pnpm run build:safari --resources-only` generates the browser resources on any supported development platform. Building the native app requires macOS/Xcode; see [publishing configuration](PUBLISHING.md#safari).
+
+Use the built `dist/` directory; source modules in `src/` need Parcel compilation. Reload the extension after rebuilding. The toolbar popup configures contribution scaling; this fork currently runs on `github.com`, without an Enterprise-domain enable menu.
 
 ## Contributing
-
-Use this fork's [issue tracker](https://github.com/vycdev/isometric-contributions-plus/issues) for changes to Isometric Contributions Plus.
 
 Use Node.js 22 or 24 (`.nvmrc` selects 22) and **pnpm 10.34.9**, pinned in
 `package.json`. With a current [Corepack](https://pnpm.io/10.x/installation#using-corepack)
@@ -61,7 +69,7 @@ pnpm test
 pnpm run build
 ```
 
-On Windows, clone with `git -c core.autocrlf=false clone <repository-url>` so
+On Windows, clone with `git -c core.autocrlf=false clone https://github.com/vycdev/isometric-contributions-plus.git` so
 checkout preserves the LF line endings expected by Biome. The Windows CI jobs
 also preserve LF during checkout; existing CRLF checkouts may need their line
 endings corrected before the full formatting check passes.
@@ -76,7 +84,7 @@ explicit decision (`pnpm approve-builds`) before a clean install succeeds.
 Useful contributor commands:
 
 - `pnpm run start`: watch the extension during development.
-- `pnpm run test:unit` / `pnpm run test:tooling`: run the unit or helper checks independently.
+- `pnpm run test:unit` / `pnpm run test:tooling` / `pnpm run test:publishing`: run unit, tooling, or fork publishing checks independently.
 - `pnpm run test:e2e`: ensure Puppeteer's pinned Chrome is downloaded, build the extension, and run the live GitHub health check. The browser download is checked explicitly because a restored pnpm store can skip install scripts without restoring Puppeteer's separate cache.
 - `pnpm run build:all`: create Chrome, Edge, and Firefox ZIPs in `artifacts/` using the local `web-ext` tool; no system `zip` command is required.
 - `pnpm run build:safari --resources-only`: build and sync Safari resources on any platform.
@@ -88,8 +96,10 @@ Run script helpers through their `pnpm run` commands so child processes reuse
 the pinned pnpm CLI on Windows, macOS, and Linux, including standalone pnpm
 installations. Local tools use `pnpm exec` and do not download an unpinned CLI. `web-ext` is declared
 directly because Firefox submission and ZIP packaging use its executable.
-`pnpm run submit:dry-run` does not publish, but it requires store credentials and
-contacts Google's token endpoint to validate them; it is not an offline check.
+`pnpm run submit:dry-run` checks configuration and artifacts offline. It never
+authenticates or uploads. See [PUBLISHING.md](PUBLISHING.md) before configuring store accounts.
+
+Report bugs, ask support questions, and discuss contributions in [this fork's issues](https://github.com/vycdev/isometric-contributions-plus/issues). Use `pnpm run start` for watch mode, `pnpm run test:unit` for unit tests, and `pnpm test` for formatting, lint, and unit checks. See [PUBLISHING.md](PUBLISHING.md) for pending store-account and private-contact setup. Never use upstream publisher accounts for this fork.
 
 <img src="img/dev-mode.png" width="981" />
 
@@ -101,10 +111,10 @@ After changes, rebuild, then click **Reload** under the extension entry. Refresh
 
 Shared light/dark palette tokens live in [`src/theme.css`](src/theme.css). See [`scripts/artwork/README.md`](scripts/artwork/README.md) for the color/scaling integration contract and the reproducible icon, screenshot, and visual-check workflow.
 
-## Community Forks
+## Related projects
 
-- [isometric-contributions-plus](https://github.com/Qiuner/isometric-contributions-plus) - Extended version with GitCode integration and additional features
+- [Qiuner's separate isometric-contributions-plus fork](https://github.com/Qiuner/isometric-contributions-plus) - GitCode integration and additional features; maintained independently of this repository.
 
 ## License
 
-This project is licensed under the [MIT License](http://opensource.org/licenses/MIT).
+This project is licensed under the [MIT License](LICENSE). Original copyright and dependency notices are preserved.

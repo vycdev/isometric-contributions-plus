@@ -1,4 +1,15 @@
 {
+  "name": "isometric-contributions-plus",
+  "private": true,
+  "description": "Isometric Contributions Plus browser extension",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vycdev/isometric-contributions-plus.git"
+  },
+  "homepage": "https://github.com/vycdev/isometric-contributions-plus",
+  "bugs": {
+    "url": "https://github.com/vycdev/isometric-contributions-plus/issues"
+  },
   "type": "module",
   "packageManager": "pnpm@10.34.9",
   "engines": {
@@ -15,7 +26,7 @@
     "build:all": "node scripts/build.js all",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "test": "biome check && pnpm run test:unit && pnpm run test:tooling",
+    "test": "biome check && pnpm run test:unit && pnpm run test:tooling && pnpm run test:publishing",
     "test:unit": "vitest run",
     "test:tooling": "node --test scripts/pnpm.test.js scripts/build.test.js scripts/test-e2e.test.js",
     "test:e2e": "node scripts/test-e2e.js",
@@ -31,7 +42,8 @@
     "submit:firefox:metadata": "node scripts/submit.js firefox-metadata",
     "submit:all": "node scripts/submit.js all",
     "submit:dry-run": "node scripts/submit.js all --dry-run",
-    "release": "pnpm run build:all && pnpm run submit:all"
+    "release": "pnpm run build:all && pnpm run submit:all",
+    "test:publishing": "node --test scripts/publishing.test.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",

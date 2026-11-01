@@ -94,7 +94,12 @@ test('helpers preserve existing outputs when pnpm is missing', () => {
     fs.mkdirSync(path.join(dir, 'src'))
     fs.mkdirSync(path.join(dir, 'dist'))
     fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}')
-    for (const file of ['pnpm.js', 'build.js', 'version.js']) {
+    for (const file of [
+      'pnpm.js',
+      'publishing-config.js',
+      'build.js',
+      'version.js'
+    ]) {
       fs.copyFileSync(
         fileURLToPath(new URL(file, import.meta.url)),
         path.join(dir, 'scripts', file)

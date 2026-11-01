@@ -6,19 +6,19 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { pnpmCommand } from './pnpm.js'
+import { ARTIFACT_NAMES, transformForFirefox } from './publishing-config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const distDir = path.join(rootDir, 'dist')
 const artifactsDir = path.join(rootDir, 'artifacts')
 
-const FIREFOX_ADDON_ID = 'isometric-contributions@jasonlong.me'
-
-const browsers = {
-  chrome: { zipName: 'isometric-contributions-chrome.zip' },
-  edge: { zipName: 'isometric-contributions-edge.zip' },
-  firefox: { zipName: 'isometric-contributions-firefox.zip' }
-}
+const browsers = Object.fromEntries(
+  Object.entries(ARTIFACT_NAMES).map(([browser, zipName]) => [
+    browser,
+    { zipName }
+  ])
+)
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -32,33 +32,6 @@ function cleanDir(dir) {
   }
 
   fs.mkdirSync(dir, { recursive: true })
-}
-
-function transformForFirefox(manifest) {
-  const v2 = { ...manifest }
-
-  // Change to manifest v2
-  // eslint-disable-next-line camelcase
-  v2.manifest_version = 2
-
-  if (v2.action) {
-    v2.browser_action = v2.action
-    delete v2.action
-  }
-
-  // Move host_permissions into permissions (v2 doesn't have host_permissions)
-  if (v2.host_permissions) {
-    v2.permissions = [...(v2.permissions || []), ...v2.host_permissions]
-    delete v2.host_permissions
-  }
-
-  // Add Firefox-specific settings
-  // eslint-disable-next-line camelcase
-  v2.browser_specific_settings = {
-    gecko: { id: FIREFOX_ADDON_ID }
-  }
-
-  return v2
 }
 
 function writeDistManifest(manifest) {

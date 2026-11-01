@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Isometric Contributions Plus",
+  "homepage_url": "https://github.com/vycdev/isometric-contributions-plus",
   "version": "1.2.8",
   "description": "Renders an isometric pixel view of GitHub contribution graphs.",
   "action": {
