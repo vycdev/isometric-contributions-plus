@@ -22,25 +22,40 @@ const showCalendar = (days) => {
 }
 
 let onNavigate
+let onThemeChange
+let onSystemThemeChange
 const renderedHeights = []
+const renderedColors = []
 const clearChart = vi.fn(() => {
   renderedHeights.length = 0
+  renderedColors.length = 0
 })
 
 beforeEach(() => {
   vi.resetModules()
   onNavigate = null
+  onThemeChange = null
+  onSystemThemeChange = null
   localStorage.clear()
   vi.spyOn(document, 'addEventListener').mockImplementation(
     (name, listener) => {
       if (name === 'turbo:load') onNavigate = listener
     }
   )
-  vi.stubGlobal('matchMedia', () => ({ addEventListener() {} }))
+  vi.stubGlobal('matchMedia', () => ({
+    addEventListener: (_name, listener) => {
+      onSystemThemeChange = listener
+    }
+  }))
   vi.stubGlobal(
     'MutationObserver',
     class {
-      observe() {}
+      constructor(callback) {
+        this.callback = callback
+      }
+      observe(target) {
+        if (target === document.documentElement) onThemeChange = this.callback
+      }
       disconnect() {}
     }
   )
@@ -57,7 +72,8 @@ beforeEach(() => {
       }
     },
     CubeColor: class {
-      getByHorizontalColor() {
+      getByHorizontalColor(color) {
+        renderedColors.push(color)
         return 0
       }
     },
@@ -109,7 +125,9 @@ it.each([
     await vi.waitFor(() => expect(renderedHeights).toEqual([3, 4, 103]))
 
     const canvas = document.getElementById('isometric-contributions')
-    const stats = document.querySelector('.ic-contributions-wrapper > div')
+    const stats = document
+      .getElementById('ic-height-scale-label')
+      .closest('.position-absolute')
     const scaleLabel = document.getElementById('ic-height-scale-label')
     const statValues = () =>
       [...stats.querySelectorAll('span:not(#ic-height-scale-label)')].map(
@@ -140,6 +158,38 @@ it.each([
     expect(clearChart).toHaveBeenCalledTimes(3)
     expect(canvas.getAttribute('aria-label')).toContain('linear')
     expect(scaleLabel.textContent).toBe('Scale: Linear')
+  }
+)
+
+it.each(['GitHub theme', 'OS preference'])(
+  'refreshes cube colors after a %s change without changing statistics or heights',
+  async (source) => {
+    showCalendar(outlierCalendar())
+    await import('./iso.js')
+    await vi.waitFor(() => expect(renderedHeights).toEqual([3, 4, 103]))
+    const originalStats = document.querySelector(
+      '.ic-contributions-wrapper'
+    ).textContent
+    const originalColors = [...renderedColors]
+    for (const cell of document.querySelectorAll('td')) {
+      cell.style.fill = 'rgb(56, 139, 253)'
+    }
+    const notify =
+      source === 'GitHub theme' ? onThemeChange : onSystemThemeChange
+    notify()
+    expect(renderedColors).toEqual([0x388bfd, 0x388bfd, 0x388bfd])
+    expect(renderedColors).not.toEqual(originalColors)
+    expect(renderedHeights).toEqual([3, 4, 103])
+    expect(
+      document.querySelector('.ic-contributions-wrapper').textContent
+    ).toBe(originalStats)
+    expect(
+      [...document.querySelectorAll('.ic-contribution-legend span')].map(
+        (node) => node.dataset.level
+      )
+    ).toEqual(['0', '1', '2', '3', '4'])
+    document.body.innerHTML = ''
+    expect(() => notify()).not.toThrow()
   }
 )
 

@@ -1,44 +1,54 @@
-# 立体贡献图浏览器拓展程序
+# Isometric Contributions Plus
 
-[英文版](https://github.com/jasonlong/isometric-contributions/blob/main/README.md) | 中文版
+[英文版](README.md) | 中文版
 
-![Node.js CI](https://github.com/jasonlong/isometric-contributions/workflows/Node.js%20CI/badge.svg)
-[![XO 代码样式](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/xojs/xo)
+![Node.js CI](https://github.com/vycdev/isometric-contributions-plus/workflows/Node.js%20CI/badge.svg)
+[![Biome 代码样式](https://img.shields.io/badge/code_style-Biome-60a5fa.svg)](https://biomejs.dev)
 
-这是一个为 Chrome / Brave 和 Firefox 而量身打造的浏览器拓展程序，让你能够在 GitHub 用户档案页面的贡献图处，切换显示原生 2D 图与立体像素版贡献图。我们使用了 [obelisk.js](https://github.com/nosir/obelisk.js) 用于绘制立体图像。
+这是 [Jason Long 的 Isometric Contributions](https://github.com/jasonlong/isometric-contributions) 的独立分支。它使用 [obelisk.js](https://github.com/nosir/obelisk.js) 将 GitHub 贡献日历绘制为立体像素图，支持 2D、3D 及同时显示两种视图。
 
-除了看起来更整洁干净外，我们的立体图像还很是有趣。它以更高的精细度，突出显示了贡献数量之间的差异。但是这并不意味着完全替代标准2D图形，因为在大多数情况下，它其实也就是个花瓶。例如，图像没有轴标签，较短的条形图可能会被隐藏在较高的条形图后面，而且在我们将鼠标悬停在条形图上时候，我们无法查看到日期和计数等。
+默认蓝色主题覆盖日历、立体图、图例、统计与设置。无活动的日期保持中性色。图表配色跟随 GitHub 的外观设置，工具栏菜单跟随系统外观。以下截图使用示例数据。
 
-<img src="img/preview.png" width="1052" />
+<img src="img/preview.png" width="1052" alt="浅色蓝色贡献图" />
+
+<img src="img/preview-dark.png" width="1052" alt="深色蓝色贡献图" />
+
+立体图可以展示贡献数量之间的细微差异，但也有局限：没有坐标轴标签，较高的柱子可能遮挡较矮的柱子，且无法悬停查看日期和数量。需要这些信息时，可切换到 2D 或同时显示两种视图。
+
+## 高度缩放
+
+点击扩展的工具栏图标，选择高度缩放方式：
+
+- **Linear（线性，默认）**：柱高与每日贡献数量成正比。
+- **Square root（平方根）**：适度提升日常活动的可见度，同时保留峰值差异。
+- **Logarithmic（对数）**：进一步降低异常峰值的视觉影响，使较少的日常活动更容易辨识。
+
+设置会自动保存，跨个人主页、年份和页面刷新生效，并立即更新已打开的图表。当前缩放方式显示在每日平均值旁边。缩放只改变 3D 柱高，贡献数量、统计数据与 2D 活动等级保持不变。
+
+<img src="img/settings-light.png" width="328" alt="浅色设置菜单" />
+<img src="img/settings-dark.png" width="328" alt="深色设置菜单" />
 
 ## 安装方式
 
-### Chrome / Brave
+原扩展的商店页面提供的是原项目。要体验 **Isometric Contributions Plus**，请从本仓库构建：
 
-[Install from the Chrome Web Store](https://chrome.google.com/webstore/detail/isometric-contributions/mjoedlfflcchnleknnceiplgaeoegien?hl=en&gl=US)
+```sh
+npm ci
+npm run build
+```
 
-### Firefox
+在 Chrome、Brave 或 Edge 的扩展页面启用**开发者模式**，点击**加载已解压的扩展程序**，选择生成的 `dist` 目录。Firefox 打包使用 `npm run build:firefox`。Safari 构建使用 `npm run build:safari`，需要 macOS 与 Xcode。
 
-[Install from Mozilla Add-ons site](https://addons.mozilla.org/en-US/firefox/addon/github-isometric-contributions/)
-
-#### GitHub Enterprise
-
-默认情况下，这个拓展程序只会渲染 `github.com` 上的贡献图，而我们可以点击拓展程序图标，选择 `Enable Isometric Contributions on this domain`，手动让拓展程序能够在我们的 Enterprise 版域名上显示。
-
-<img src="img/enterprise.png" width="396" />
+<img src="img/dev-mode.png" width="981" alt="启用开发者模式并加载扩展" />
 
 ## 贡献
 
-如果您想自定义扩展程序，那么你可能需要手动安装它。首先先克隆或分叉此仓库，然后，在 Chrome 扩展程序 页面上，选中 “开发人员模式，点击 “加载已解压缩的扩展程序……” 按钮，然后选定仓库所在的文件夹即可。
+请在本分支的[问题追踪器](https://github.com/vycdev/isometric-contributions-plus/issues)中讨论更改。修改代码后重新构建，在扩展页面点击**重新加载**，然后刷新 GitHub 页面。
 
-<img src="img/dev-mode.png" width="981" />
+<img src="img/reload-link.png" width="410" alt="重新加载扩展" />
 
-要自定义该扩展程序，首先需要确保已在开发人员模式下安装了该扩展程序（参见上文）。对扩展程序进行更改后，请返回 “扩展程序” 页面，然后单击扩展程序条目下的 “重新加载” 链接。
-
-<img src="img/reload-link.png" width="410" />
-
-如果你有什么改进的内容，请随时打开一个拉取请求。
+共享配色位于 [`src/theme.css`](src/theme.css)。图标、截图的生成方法以及与颜色自定义、2D 缩放的集成约定，见 [`scripts/artwork/README.md`](scripts/artwork/README.md)。
 
 ## 开源协议
 
-本项目以 [MIT License](http://opensource.org/licenses/MIT) 协议开源。
+本项目以 [MIT License](https://opensource.org/licenses/MIT) 协议开源。

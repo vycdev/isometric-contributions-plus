@@ -194,6 +194,16 @@ const initUI = () => {
   canvas.style.width = '100%'
   contributionsWrapper.append(canvas)
 
+  const legend = document.createElement('div')
+  legend.className =
+    'ic-contribution-legend position-absolute bottom-0 right-0 mr-5 mb-3 text-small color-fg-muted'
+  legend.setAttribute('role', 'img')
+  legend.setAttribute('aria-label', 'Contribution activity, from less to more')
+  legend.innerHTML = `Less ${[0, 1, 2, 3, 4]
+    .map((level) => `<span data-level="${level}"></span>`)
+    .join('')} More`
+  contributionsWrapper.append(legend)
+
   // Inject toggle
   const heading = contributionsBox.querySelector('h2')
 
@@ -283,6 +293,13 @@ const refreshColors = () => {
     if (element) {
       d.color = getSquareColor(element)
     }
+  }
+}
+
+const refreshChartTheme = () => {
+  if (document.querySelector('.ic-contributions-wrapper')) {
+    refreshColors()
+    renderIsometricChart()
   }
 }
 
@@ -516,12 +533,14 @@ const generateIsometricChart = () => {
 
   globalThis
     .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', () => {
-      if (document.querySelector('.ic-contributions-wrapper')) {
-        refreshColors()
-        renderIsometricChart()
-      }
-    })
+    .addEventListener('change', refreshChartTheme)
+
+  // GitHub can change its own theme without changing the OS preference.
+  const themeObserver = new MutationObserver(refreshChartTheme)
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-color-mode', 'data-light-theme', 'data-dark-theme']
+  })
 
   setupObserver()
   document.addEventListener('turbo:load', setupObserver)
@@ -530,7 +549,7 @@ const generateIsometricChart = () => {
       document.visibilityState === 'visible' &&
       document.querySelector('.ic-contributions-wrapper')
     ) {
-      renderIsometricChart()
+      refreshChartTheme()
     }
   })
 })()

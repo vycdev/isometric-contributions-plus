@@ -24,6 +24,8 @@ const SOURCE_FILES = [
   'iso.js',
   'iso.css',
   'obelisk.min.js',
+  'icon-16.png',
+  'icon-32.png',
   'icon-48.png',
   'icon-128.png',
   'popup.html',
@@ -39,6 +41,7 @@ function syncResources() {
   )
   const assets = new Set([
     ...Object.values(manifest.icons || {}),
+    ...Object.values(manifest.action?.default_icon || {}),
     ...(manifest.content_scripts || []).flatMap((script) => [
       ...(script.js || []),
       ...(script.css || [])
@@ -80,6 +83,9 @@ function syncResources() {
             .replaceAll(`/${hashedName}`, originalName)
             .replaceAll(hashedName, originalName)
         }
+        if (original.endsWith('.html')) {
+          content = `${content.replace(/[\t ]+$/gm, '').trimEnd()}\n`
+        }
         fs.writeFileSync(dest, content)
       } else {
         fs.copyFileSync(src, dest)
@@ -89,6 +95,17 @@ function syncResources() {
       console.error(`  WARNING: ${src} not found`)
     }
   }
+
+  // Keep the checked-in manifest in sync, using the unhashed Safari filenames.
+  const manifestText = JSON.stringify(
+    manifest,
+    (_key, value) => hashToOriginal.get(value) || value,
+    2
+  )
+  fs.writeFileSync(
+    path.join(resourcesDir, 'manifest.json'),
+    `${manifestText}\n`
+  )
 
   console.log('Resources synced.\n')
 }

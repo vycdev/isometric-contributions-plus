@@ -389,7 +389,7 @@ export const generateContributionsMarkup = (stats, options = {}) => {
       <h5 class="mb-1">Contributions</h5>
       <div class="d-flex flex-justify-between rounded-2 border px-1 px-md-2">
         <div class="p-2">
-          <span class="d-block f2 text-bold color-fg-success lh-condensed">${countTotal}</span>
+          <span class="d-block f2 text-bold ic-accent lh-condensed">${countTotal}</span>
           <span class="d-block text-small text-bold">Total</span>
           <span class="d-none d-sm-block text-small color-fg-muted">${datesTotal}</span>
         </div>
@@ -398,7 +398,7 @@ export const generateContributionsMarkup = (stats, options = {}) => {
   if (showWeek) {
     markup += `
       <div class="p-2 d-none d-xl-block">
-        <span class="d-block f2 text-bold color-fg-success lh-condensed">${weekCountTotal}</span>
+        <span class="d-block f2 text-bold ic-accent lh-condensed">${weekCountTotal}</span>
         <span class="d-block text-small text-bold">This week</span>
         <span class="d-none d-sm-block text-small color-fg-muted">${weekDatesTotal}</span>
       </div>
@@ -407,14 +407,14 @@ export const generateContributionsMarkup = (stats, options = {}) => {
 
   markup += `
       <div class="p-2">
-        <span class="d-block f2 text-bold color-fg-success lh-condensed">${maxCount}</span>
+        <span class="d-block f2 text-bold ic-accent lh-condensed">${maxCount}</span>
         <span class="d-block text-small text-bold">Best day</span>
         <span class="d-none d-sm-block text-small color-fg-muted">${dateBest}</span>
       </div>
     </div>
     <p class="d-flex flex-wrap flex-justify-between gap-2 mt-1 text-small">
       <span id="ic-height-scale-label" class="color-fg-muted" title="${scale.description}">Scale: ${scale.label}</span>
-      <span class="ml-auto text-right">Average: <span class="text-bold color-fg-success">${averageCount}</span> <span class="color-fg-muted">/ day</span></span>
+      <span class="ml-auto text-right">Average: <span class="text-bold ic-accent">${averageCount}</span> <span class="color-fg-muted">/ day</span></span>
     </p>
     </div>
   `
@@ -454,7 +454,7 @@ export const generateStreaksMarkup = (stats, options = {}) => {
       <h5 class="mb-1">Streaks</h5>
       <div class="d-flex flex-justify-between rounded-2 border px-1 px-md-2">
         <div class="p-2">
-          <span id="ic-streak-longest-count" class="d-block f2 text-bold color-fg-success lh-condensed">${longestValue} <span class="f4">days</span></span>
+          <span id="ic-streak-longest-count" class="d-block f2 text-bold ic-accent lh-condensed">${longestValue} <span class="f4">days</span></span>
           <span class="d-block text-small text-bold">Longest</span>
           <span id="ic-streak-longest-dates" class="d-none d-sm-block text-small color-fg-muted">${longestDates}</span>
         </div>
@@ -463,7 +463,7 @@ export const generateStreaksMarkup = (stats, options = {}) => {
   if (showCurrent) {
     markup += `
           <div class="p-2">
-            <span id="ic-streak-current-count" class="d-block f2 text-bold color-fg-success lh-condensed">${currentValue} <span class="f4">days</span></span>
+            <span id="ic-streak-current-count" class="d-block f2 text-bold ic-accent lh-condensed">${currentValue} <span class="f4">days</span></span>
             <span class="d-block text-small text-bold">Current</span>
             <span id="ic-streak-current-dates" class="d-none d-sm-block text-small color-fg-muted">${currentDates}</span>
           </div>

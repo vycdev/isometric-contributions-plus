@@ -1,0 +1,52 @@
+/* Shared defaults for the contribution area and the extension popup.
+   Color controls can override --ic-level-0…4, --ic-accent and --ic-selected
+   on either scope. Keep activity levels independent of count/height scaling. */
+.js-yearly-contributions,
+.ic-settings {
+  --ic-light-level-0: #ebedf0;
+  --ic-light-level-1: #b6d9ff;
+  --ic-light-level-2: #80baff;
+  --ic-light-level-3: #388bfd;
+  --ic-light-level-4: #0969da;
+  --ic-light-accent: #0969da;
+  --ic-light-selected: #ddf4ff;
+  --ic-dark-level-0: #161b22;
+  --ic-dark-level-1: #12325a;
+  --ic-dark-level-2: #1758a6;
+  --ic-dark-level-3: #388bfd;
+  --ic-dark-level-4: #79c0ff;
+  --ic-dark-accent: #58a6ff;
+  --ic-dark-selected: #121f36;
+  --ic-level-0: var(--ic-light-level-0);
+  --ic-level-1: var(--ic-light-level-1);
+  --ic-level-2: var(--ic-light-level-2);
+  --ic-level-3: var(--ic-light-level-3);
+  --ic-level-4: var(--ic-light-level-4);
+  --ic-accent: var(--ic-light-accent);
+  --ic-selected: var(--ic-light-selected);
+}
+
+/* GitHub's explicit theme takes precedence over the OS preference. */
+[data-color-mode="dark"] .js-yearly-contributions {
+  --ic-level-0: var(--ic-dark-level-0);
+  --ic-level-1: var(--ic-dark-level-1);
+  --ic-level-2: var(--ic-dark-level-2);
+  --ic-level-3: var(--ic-dark-level-3);
+  --ic-level-4: var(--ic-dark-level-4);
+  --ic-accent: var(--ic-dark-accent);
+  --ic-selected: var(--ic-dark-selected);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="auto"] .js-yearly-contributions,
+  html:not([data-color-mode]) .js-yearly-contributions,
+  .ic-settings {
+    --ic-level-0: var(--ic-dark-level-0);
+    --ic-level-1: var(--ic-dark-level-1);
+    --ic-level-2: var(--ic-dark-level-2);
+    --ic-level-3: var(--ic-dark-level-3);
+    --ic-level-4: var(--ic-dark-level-4);
+    --ic-accent: var(--ic-dark-accent);
+    --ic-selected: var(--ic-dark-selected);
+  }
+}
