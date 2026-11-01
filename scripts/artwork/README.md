@@ -26,8 +26,12 @@ GitHub's theme attributes or the OS preference changes.
 The icons retain the four-cube silhouette, with editable vector geometry in
 `icon.svg`. The macOS variants include the native app's rounded light backing.
 Screenshots render the production extension against deterministic sample data in
-`calendar.js`; `fixture.css` supplies only the surrounding GitHub layout. The
-installation screenshots use the actual extension loaded in headless Chrome.
+`calendar.js`; `fixture.css` supplies the surrounding GitHub layout. Its 744px
+panel and weekday-label column match the supplied browser reference, keeping the
+10px calendar squares and painted 3D graph at comparable widths. The renderer
+checks both cell geometry and graph alignment. The extension's full-width canvas
+is unchanged. Installation screenshots use the actual extension loaded in
+headless Chrome.
 
 ```sh
 npm ci

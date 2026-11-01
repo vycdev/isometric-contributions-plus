@@ -67,7 +67,7 @@ try {
     const css = (
       await Promise.all(script.css.map((file) => read(`dist/${file}`)))
     ).join('\n')
-    await page.setViewport({ width: 1048, height: 1000, deviceScaleFactor: 2 })
+    await page.setViewport({ width: 792, height: 1000, deviceScaleFactor: 2 })
     await page.setContent(calendarHtml())
     await page.addStyleTag({
       content: await read('scripts/artwork/fixture.css')
@@ -103,6 +103,40 @@ try {
       assert.equal(width, 10, 'Calendar days retain their 10px width')
       assert.equal(height, width, 'Calendar days are square in the artwork')
     }
+    const layout = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas')
+      const { data } = canvas
+        .getContext('2d')
+        .getImageData(0, 0, canvas.width, canvas.height)
+      let left = canvas.width
+      let right = 0
+      for (let i = 3; i < data.length; i += 4) {
+        if (!data[i]) continue
+        const x = ((i - 3) / 4) % canvas.width
+        left = Math.min(left, x)
+        right = Math.max(right, x)
+      }
+      const days = [...document.querySelectorAll('td[data-date]')]
+      const first = days[0].getBoundingClientRect()
+      const last = days.at(-1).getBoundingClientRect()
+      const canvasBounds = canvas.getBoundingClientRect()
+      return {
+        calendarWidth: last.right - first.left,
+        cubesWidth: ((right - left + 1) * canvasBounds.width) / canvas.width,
+        canvasWidth: canvasBounds.width,
+        containerWidth: document
+          .querySelector('.chart-frame')
+          .getBoundingClientRect().width
+      }
+    })
+    assert.ok(
+      Math.abs(layout.cubesWidth - layout.calendarWidth) < 30,
+      'The painted 3D graph and 2D day grid have comparable widths, as in the browser reference'
+    )
+    assert.ok(
+      Math.abs(layout.canvasWidth - layout.containerWidth) <= 2,
+      'The 3D canvas keeps the extension’s full-width layout'
+    )
     const section = await page.$('.js-yearly-contributions')
     const statsText = () =>
       page.$$eval('.ic-accent', (nodes) =>

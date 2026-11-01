@@ -36,7 +36,7 @@ export const calendarHtml = (days = sampleDays) => {
   const rows = Array.from(
     { length: 7 },
     (_, row) =>
-      `<tr>${days
+      `<tr><th class="weekday" scope="row"><span>${{ 1: 'Mon', 3: 'Wed', 5: 'Fri' }[row] || ''}</span></th>${days
         .filter((_, i) => i % 7 === row)
         .map((day) => {
           const i = days.indexOf(day)
@@ -59,7 +59,7 @@ export const calendarHtml = (days = sampleDays) => {
       <h2>${days.reduce((total, day) => total + day.count, 0).toLocaleString('en-US')} contributions in the last year</h2>
       <div class="chart-frame"><div class="js-calendar-graph">
         <table class="js-calendar-graph-table">
-          <thead class="months"><tr>${monthHeaders}</tr></thead>
+          <thead class="months"><tr><th class="weekday"></th>${monthHeaders}</tr></thead>
           <tbody>${rows}</tbody></table>
         <div class="calendar-footer"><span>Learn how we count contributions</span>
           <div class="calendar-legend">Less ${legend} More</div></div>

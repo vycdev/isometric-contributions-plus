@@ -15,17 +15,20 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 24px; }
-main { width: 1000px; margin: auto; }
+/* Match the profile contribution panel in the supplied browser reference. */
+main { width: 744px; margin: auto; }
 h2 { font-size: 20px; font-weight: 400; margin: 0 0 12px; }
 h5 { font-size: 14px; margin: 0; }
 button { cursor: pointer; }
 .chart-frame { border: 1px solid var(--fixture-border); border-radius: 6px; }
-.js-calendar-graph { padding: 16px 24px; }
+.js-calendar-graph { padding: 12px; }
 /* Let the calendar keep its natural width so the days remain square. */
 .js-calendar-graph-table { border-spacing: 3px; }
 .ContributionCalendar-day { width: 10px; height: 10px; padding: 0; border-radius: 2px; }
 .months { font-size: 12px; color: var(--fixture-muted); }
 .months th { padding: 0 0 4px; font-weight: 400; text-align: left; }
+.weekday { position: relative; width: 28px; padding: 0; }
+.weekday span { position: absolute; top: 0; right: 4px; font-size: 12px; line-height: 10px; font-weight: 400; }
 .calendar-footer { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; }
 .calendar-footer > span { color: #388bfd; }
 .calendar-legend { display: flex; align-items: center; gap: 4px; color: var(--fixture-muted); }
