@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
 
-// Run npm run build first. This uses an isolated browser and real extension storage.
+// Run pnpm run build first. This uses an isolated browser and real extension storage.
 const root = fileURLToPath(new URL('..', import.meta.url))
 const extension = path.join(root, 'dist')
 const manifest = JSON.parse(

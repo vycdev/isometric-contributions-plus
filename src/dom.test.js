@@ -357,4 +357,33 @@ describe('parseCalendarGraph', () => {
     expect(result).toHaveLength(1)
     expect(result[0].count).toBeUndefined()
   })
+
+  it('reads exact counts from unhydrated tooltips linked with for', () => {
+    const element = createDayElement('2024-01-01', '0', null)
+    element.removeAttribute('aria-labelledby')
+    element.id = 'contribution-day'
+    const tooltip = createTooltipElement(
+      'tooltip',
+      '609 contributions on January 1st.'
+    )
+    tooltip.setAttribute('for', element.id)
+    expect(
+      parseCalendarGraph([element], [tooltip], () => 'ffffff')[0].count
+    ).toBe(609)
+  })
+
+  it.each(['', 'Loading...'])(
+    'distinguishes an unavailable count (%s) from an inactive day',
+    (text) => {
+      const elements = [createDayElement('2024-01-01', '0', 'tip')]
+      const tooltips = [createTooltipElement('tip', text)]
+      expect(
+        parseCalendarGraph(elements, tooltips, () => 'ffffff')[0].count
+      ).toBeNull()
+      tooltips[0].textContent = 'No contributions on January 1st.'
+      expect(
+        parseCalendarGraph(elements, tooltips, () => 'ffffff')[0].count
+      ).toBe(0)
+    }
+  )
 })

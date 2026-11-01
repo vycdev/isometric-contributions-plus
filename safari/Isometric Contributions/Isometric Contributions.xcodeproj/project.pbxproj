@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B10000000000000000000016 /* icon-16.png in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000016 /* icon-16.png */; };
+		B10000000000000000000032 /* icon-32.png in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000032 /* icon-32.png */; };
 		38E190DD541C4134932D5B26 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = E290F14F329E44BCA1888421 /* popup.html */; };
 		4B7A390D36B14BD49BCFD7DA /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 4F055A9FB6F941E7A2CF8F22 /* popup.js */; };
 		A31CA91F1D8B48EAB0621171 /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = C6F26032F98644B69BF724AA /* popup.css */; };
@@ -18,7 +20,7 @@
 		966838BC2F808F7100F6C07B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966838BB2F808F7100F6C07B /* ViewController.swift */; };
 		966838BF2F808F7100F6C07B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 966838BD2F808F7100F6C07B /* Main.storyboard */; };
 		966838C12F808F7200F6C07B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 966838C02F808F7200F6C07B /* Assets.xcassets */; };
-		966838C82F808F7200F6C07B /* Isometric Contributions Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 966838C72F808F7200F6C07B /* Isometric Contributions Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		966838C82F808F7200F6C07B /* Isometric Contributions Plus Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 966838C72F808F7200F6C07B /* Isometric Contributions Plus Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		966838CD2F808F7200F6C07B /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966838CC2F808F7200F6C07B /* SafariWebExtensionHandler.swift */; };
 		966838E22F808F7200F6C07B /* obelisk.min.js in Resources */ = {isa = PBXBuildFile; fileRef = 966838D92F808F7200F6C07B /* obelisk.min.js */; };
 		966838E32F808F7200F6C07B /* icon-48.png in Resources */ = {isa = PBXBuildFile; fileRef = 966838DA2F808F7200F6C07B /* icon-48.png */; };
@@ -45,7 +47,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				966838C82F808F7200F6C07B /* Isometric Contributions Extension.appex in Embed Foundation Extensions */,
+				966838C82F808F7200F6C07B /* Isometric Contributions Plus Extension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -53,10 +55,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F10000000000000000000016 /* icon-16.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "icon-16.png"; path = "Resources/icon-16.png"; sourceTree = "<group>"; };
+		F10000000000000000000032 /* icon-32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "icon-32.png"; path = "Resources/icon-32.png"; sourceTree = "<group>"; };
 		E290F14F329E44BCA1888421 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = Resources/popup.html; sourceTree = "<group>"; };
 		4F055A9FB6F941E7A2CF8F22 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = popup.js; path = Resources/popup.js; sourceTree = "<group>"; };
 		C6F26032F98644B69BF724AA /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = popup.css; path = Resources/popup.css; sourceTree = "<group>"; };
-		966838AC2F808F7100F6C07B /* Isometric Contributions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Isometric Contributions.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		966838AC2F808F7100F6C07B /* Isometric Contributions Plus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Isometric Contributions Plus.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		966838AF2F808F7100F6C07B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		966838B32F808F7100F6C07B /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
 		966838B52F808F7100F6C07B /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
@@ -66,7 +70,7 @@
 		966838BE2F808F7100F6C07B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		966838C02F808F7200F6C07B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		966838C22F808F7200F6C07B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		966838C72F808F7200F6C07B /* Isometric Contributions Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Isometric Contributions Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		966838C72F808F7200F6C07B /* Isometric Contributions Plus Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Isometric Contributions Plus Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		966838CC2F808F7200F6C07B /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		966838CE2F808F7200F6C07B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		966838D92F808F7200F6C07B /* obelisk.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = obelisk.min.js; path = Resources/obelisk.min.js; sourceTree = "<group>"; };
@@ -107,8 +111,8 @@
 		966838AD2F808F7100F6C07B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				966838AC2F808F7100F6C07B /* Isometric Contributions.app */,
-				966838C72F808F7200F6C07B /* Isometric Contributions Extension.appex */,
+				966838AC2F808F7100F6C07B /* Isometric Contributions Plus.app */,
+				966838C72F808F7200F6C07B /* Isometric Contributions Plus Extension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -150,6 +154,8 @@
 		966838D82F808F7200F6C07B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				F10000000000000000000016 /* icon-16.png */,
+				F10000000000000000000032 /* icon-32.png */,
 				E290F14F329E44BCA1888421 /* popup.html */,
 				4F055A9FB6F941E7A2CF8F22 /* popup.js */,
 				C6F26032F98644B69BF724AA /* popup.css */,
@@ -184,8 +190,8 @@
 			name = "Isometric Contributions";
 			packageProductDependencies = (
 			);
-			productName = "Isometric Contributions";
-			productReference = 966838AC2F808F7100F6C07B /* Isometric Contributions.app */;
+			productName = "Isometric Contributions Plus";
+			productReference = 966838AC2F808F7100F6C07B /* Isometric Contributions Plus.app */;
 			productType = "com.apple.product-type.application";
 		};
 		966838C62F808F7200F6C07B /* Isometric Contributions Extension */ = {
@@ -203,8 +209,8 @@
 			name = "Isometric Contributions Extension";
 			packageProductDependencies = (
 			);
-			productName = "Isometric Contributions Extension";
-			productReference = 966838C72F808F7200F6C07B /* Isometric Contributions Extension.appex */;
+			productName = "Isometric Contributions Plus Extension";
+			productReference = 966838C72F808F7200F6C07B /* Isometric Contributions Plus Extension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -263,6 +269,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B10000000000000000000016 /* icon-16.png in Resources */,
+				B10000000000000000000032 /* icon-32.png in Resources */,
 				38E190DD541C4134932D5B26 /* popup.html in Resources */,
 				4B7A390D36B14BD49BCFD7DA /* popup.js in Resources */,
 				A31CA91F1D8B48EAB0621171 /* popup.css in Resources */,
@@ -453,7 +461,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Isometric Contributions Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions Extension";
+				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions Plus Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -466,8 +474,8 @@
 					"-framework",
 					SafariServices,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "me.jasonlong.isometric-contribution.Extension";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.vycdev.isometric-contributions-plus.Extension";
+				PRODUCT_NAME = "Isometric Contributions Plus Extension";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -487,7 +495,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Isometric Contributions Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions Extension";
+				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions Plus Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -501,9 +509,9 @@
 					SafariServices,
 				);
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
-				PROVISIONING_PROFILE_SPECIFIER = "Isometric Contributions Extension App Store";
-				PRODUCT_BUNDLE_IDENTIFIER = "me.jasonlong.isometric-contribution.Extension";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(IC_EXTENSION_PROFILE_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.vycdev.isometric-contributions-plus.Extension";
+				PRODUCT_NAME = "Isometric Contributions Plus Extension";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -527,7 +535,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Isometric Contributions/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions";
+				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions Plus";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -542,8 +550,8 @@
 					"-framework",
 					WebKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "me.jasonlong.isometric-contribution";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.vycdev.isometric-contributions-plus";
+				PRODUCT_NAME = "Isometric Contributions Plus";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -568,7 +576,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Isometric Contributions/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions";
+				INFOPLIST_KEY_CFBundleDisplayName = "Isometric Contributions Plus";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -584,9 +592,9 @@
 					WebKit,
 				);
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
-				PROVISIONING_PROFILE_SPECIFIER = "Isometric Contributions App Store";
-				PRODUCT_BUNDLE_IDENTIFIER = "me.jasonlong.isometric-contribution";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(IC_APP_PROFILE_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.vycdev.isometric-contributions-plus";
+				PRODUCT_NAME = "Isometric Contributions Plus";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

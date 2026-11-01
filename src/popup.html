@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="ic-settings">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Isometric Contributions settings</title>
+    <title>Isometric Contributions Plus settings</title>
     <link rel="stylesheet" href="popup.css" />
     <script type="module" src="popup.js"></script>
   </head>
@@ -11,7 +11,7 @@
     <header>
       <img src="icon-48.png" width="32" height="32" alt="" />
       <div>
-        <h1>Isometric Contributions</h1>
+        <h1>Isometric Contributions Plus</h1>
         <p>Chart settings</p>
       </div>
     </header>
@@ -33,8 +33,9 @@
           <p id="color-help">Shades adapt to light and dark themes. Counts stay unchanged.</p>
           <button id="reset-color" type="button">Reset to blue</button>
         </fieldset>
-        <fieldset disabled>
-          <legend>Height scale</legend>
+        <fieldset disabled aria-describedby="scale-description">
+          <legend>Contribution scale</legend>
+          <p id="scale-description">Controls 3D bar height and 2D color intensity.</p>
           <div id="height-scales"></div>
         </fieldset>
       </form>

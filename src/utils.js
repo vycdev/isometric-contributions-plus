@@ -5,27 +5,21 @@ import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 // =============================================================================
 
 /**
- * Scale bar heights linearly by default, or soften peaks with a root or log.
- * In every mode, zero stays flat and the busiest day reaches maximum height.
+ * Normalize daily counts for both 3D height and 2D color intensity.
+ * Zero stays neutral and the busiest visible day reaches one.
  * @param {number} count - Contributions on this day
  * @param {number} maxCount - Contributions on the busiest visible day
- * @param {'linear'|'square-root'|'logarithmic'} scale - Height scale
- * @param {number} maxHeight - Available height above the three-pixel base
- * @returns {number} Bar height in pixels
+ * @param {'linear'|'square-root'|'logarithmic'} scale - Contribution scale
+ * @returns {number} Normalized intensity between zero and one
  */
-export const contributionHeight = (
-  count,
-  maxCount,
-  scale = 'linear',
-  maxHeight = 100
-) => {
+export const contributionIntensity = (count, maxCount, scale = 'linear') => {
   if (
     !Number.isFinite(count) ||
     !Number.isFinite(maxCount) ||
     count <= 0 ||
     maxCount <= 0
   ) {
-    return 3
+    return 0
   }
 
   const clampedCount = Math.min(count, maxCount)
@@ -35,8 +29,16 @@ export const contributionHeight = (
   } else if (scale === 'logarithmic') {
     ratio = Math.log1p(clampedCount) / Math.log1p(maxCount)
   }
-  return 3 + Math.floor(maxHeight * ratio)
+  return ratio
 }
+
+/** Scale a bar above its three-pixel base using the shared normalization. */
+export const contributionHeight = (
+  count,
+  maxCount,
+  scale = 'linear',
+  maxHeight = 100
+) => 3 + Math.floor(maxHeight * contributionIntensity(count, maxCount, scale))
 
 /**
  * Round a number to a specified precision.
@@ -95,17 +97,18 @@ export const sameDay = (d1, d2) => d1.toDateString() === d2.toDateString()
  * - "1 contribution on January 10th."
  * - "2 contributions on August 31st."
  * @param {string} text - The tooltip text content
- * @returns {number} The contribution count (0 if no match or "No contributions")
+ * @param {number|null} missingCount - Value for unavailable counts (defaults to 0)
+ * @returns {number|null} The contribution count, or missingCount if no match
  */
-export const getContributionCount = (text) => {
-  const contributionMatches = text.match(/(\d+|No) contributions? on/)
+export const getContributionCount = (text, missingCount = 0) => {
+  const contributionMatches = text.match(/([\d,]+|No) contributions? on/)
   if (!contributionMatches) {
-    return 0
+    return missingCount
   }
 
   return contributionMatches[1] === 'No'
     ? 0
-    : Number.parseInt(contributionMatches[1], 10)
+    : Number.parseInt(contributionMatches[1].replaceAll(',', ''), 10)
 }
 
 /**
@@ -248,17 +251,21 @@ export const parseCalendarGraph = (
     date: new Date(d.dataset.date),
     week: d.dataset.ix,
     color: getColorFn(d),
-    tid: d.getAttribute('aria-labelledby')
+    tid: d.getAttribute('aria-labelledby'),
+    elementId: d.id
   }))
 
   const tooltipNodes = [...tooltipElements].map((t) => ({
     tid: t.id,
-    count: getContributionCount(t.textContent)
+    target: t.getAttribute('for'),
+    count: getContributionCount(t.textContent, null)
   }))
 
   const data = dayNodes.map((d) => ({
     ...d,
-    ...tooltipNodes.find((t) => t.tid === d.tid)
+    ...tooltipNodes.find(
+      (t) => t.tid === d.tid || (d.elementId && t.target === d.elementId)
+    )
   }))
 
   return data.sort((a, b) => a.date.getTime() - b.date.getTime())
@@ -389,7 +396,7 @@ export const generateContributionsMarkup = (stats, options = {}) => {
       <h5 class="mb-1">Contributions</h5>
       <div class="d-flex flex-justify-between rounded-2 border px-1 px-md-2">
         <div class="p-2">
-          <span class="d-block f2 text-bold color-fg-success lh-condensed">${countTotal}</span>
+          <span class="d-block f2 text-bold ic-accent lh-condensed">${countTotal}</span>
           <span class="d-block text-small text-bold">Total</span>
           <span class="d-none d-sm-block text-small color-fg-muted">${datesTotal}</span>
         </div>
@@ -398,7 +405,7 @@ export const generateContributionsMarkup = (stats, options = {}) => {
   if (showWeek) {
     markup += `
       <div class="p-2 d-none d-xl-block">
-        <span class="d-block f2 text-bold color-fg-success lh-condensed">${weekCountTotal}</span>
+        <span class="d-block f2 text-bold ic-accent lh-condensed">${weekCountTotal}</span>
         <span class="d-block text-small text-bold">This week</span>
         <span class="d-none d-sm-block text-small color-fg-muted">${weekDatesTotal}</span>
       </div>
@@ -407,14 +414,14 @@ export const generateContributionsMarkup = (stats, options = {}) => {
 
   markup += `
       <div class="p-2">
-        <span class="d-block f2 text-bold color-fg-success lh-condensed">${maxCount}</span>
+        <span class="d-block f2 text-bold ic-accent lh-condensed">${maxCount}</span>
         <span class="d-block text-small text-bold">Best day</span>
         <span class="d-none d-sm-block text-small color-fg-muted">${dateBest}</span>
       </div>
     </div>
     <p class="d-flex flex-wrap flex-justify-between gap-2 mt-1 text-small">
       <span id="ic-height-scale-label" class="color-fg-muted" title="${scale.description}">Scale: ${scale.label}</span>
-      <span class="ml-auto text-right">Average: <span class="text-bold color-fg-success">${averageCount}</span> <span class="color-fg-muted">/ day</span></span>
+      <span class="ml-auto text-right">Average: <span class="text-bold ic-accent">${averageCount}</span> <span class="color-fg-muted">/ day</span></span>
     </p>
     </div>
   `
@@ -454,7 +461,7 @@ export const generateStreaksMarkup = (stats, options = {}) => {
       <h5 class="mb-1">Streaks</h5>
       <div class="d-flex flex-justify-between rounded-2 border px-1 px-md-2">
         <div class="p-2">
-          <span id="ic-streak-longest-count" class="d-block f2 text-bold color-fg-success lh-condensed">${longestValue} <span class="f4">days</span></span>
+          <span id="ic-streak-longest-count" class="d-block f2 text-bold ic-accent lh-condensed">${longestValue} <span class="f4">days</span></span>
           <span class="d-block text-small text-bold">Longest</span>
           <span id="ic-streak-longest-dates" class="d-none d-sm-block text-small color-fg-muted">${longestDates}</span>
         </div>
@@ -463,7 +470,7 @@ export const generateStreaksMarkup = (stats, options = {}) => {
   if (showCurrent) {
     markup += `
           <div class="p-2">
-            <span id="ic-streak-current-count" class="d-block f2 text-bold color-fg-success lh-condensed">${currentValue} <span class="f4">days</span></span>
+            <span id="ic-streak-current-count" class="d-block f2 text-bold ic-accent lh-condensed">${currentValue} <span class="f4">days</span></span>
             <span class="d-block text-small text-bold">Current</span>
             <span id="ic-streak-current-dates" class="d-none d-sm-block text-small color-fg-muted">${currentDates}</span>
           </div>

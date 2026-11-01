@@ -1,3 +1,4 @@
+import { renderCalendarIntensity } from './calendar.js'
 import { fetchExtendedStreakData } from './history.js'
 import {
   applyContributionPalette,
@@ -211,6 +212,16 @@ const initUI = () => {
   canvas.style.width = '100%'
   contributionsWrapper.append(canvas)
 
+  const legend = document.createElement('div')
+  legend.className =
+    'ic-contribution-legend position-absolute bottom-0 right-0 mr-5 mb-3 text-small color-fg-muted'
+  legend.setAttribute('role', 'img')
+  legend.setAttribute('aria-label', 'Contribution activity, from less to more')
+  legend.innerHTML = `Less ${[0, 1, 2, 3, 4]
+    .map((level) => `<span data-level="${level}"></span>`)
+    .join('')} More`
+  contributionsWrapper.append(legend)
+
   // Inject toggle
   const heading = contributionsBox.querySelector('h2')
 
@@ -308,8 +319,9 @@ const applyTheme = () => {
 }
 
 const refreshColors = () => {
+  calendarGraph.classList.remove('ic-calendar-scaled')
   const dayElements = calendarGraph.querySelectorAll(
-    '.js-calendar-graph-table tbody td.ContributionCalendar-day'
+    '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
   )
   const byDate = new Map(
     [...dayElements].map((node) => [node.dataset.date, node])
@@ -322,15 +334,17 @@ const refreshColors = () => {
   }
 }
 
-const loadStats = () => {
-  const dayElements = document.querySelectorAll(
-    '.js-calendar-graph-table tbody td.ContributionCalendar-day'
-  )
-  const tooltipElements = document.querySelectorAll(
-    '.js-calendar-graph tool-tip'
+const readCalendarDays = (graph, getColorFn = getSquareColor) =>
+  parseCalendarGraph(
+    graph.querySelectorAll(
+      '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
+    ),
+    graph.querySelectorAll('tool-tip'),
+    getColorFn
   )
 
-  days = parseCalendarGraph(dayElements, tooltipElements, getSquareColor)
+const loadStats = () => {
+  days = readCalendarDays(calendarGraph)
   weeks = Object.values(
     days.reduce((acc, day) => {
       const key = day.week
@@ -453,6 +467,17 @@ const renderIsometricChart = () => {
   }
 }
 
+const renderCharts = () => {
+  renderCalendarIntensity(
+    calendarGraph,
+    days,
+    maxCount,
+    heightScale,
+    palette.levels
+  )
+  renderIsometricChart()
+}
+
 const renderStats = () => {
   const graphHeaderText = document.querySelector('.ic-contributions-wrapper')
     .parentNode.previousElementSibling.textContent
@@ -500,23 +525,29 @@ const generateIsometricChart = () => {
 
   resetValues()
   applyTheme()
+  calendarGraph.classList.remove('ic-calendar-scaled')
   initUI()
   loadStats()
   renderStats()
-  renderIsometricChart()
+  renderCharts()
 
   extendStreakDataAndUpdate()
 }
 
 ;(async () => {
   const initIfReady = () => {
-    if (
-      document.querySelector('.js-calendar-graph') &&
-      !document.querySelector('.ic-contributions-wrapper')
-    ) {
-      generateIsometricChart()
-    }
     themeContributionActivity()
+    const graph = document.querySelector('.js-calendar-graph')
+    if (!graph || document.querySelector('.ic-contributions-wrapper')) return
+    // GitHub can insert the calendar before its count tooltips. Keep its native
+    // colors until exact counts are available for both intensity and statistics.
+    const sourceDays = readCalendarDays(graph, () => null)
+    if (
+      !sourceDays.length ||
+      sourceDays.some((day) => !Number.isFinite(day.count))
+    )
+      return
+    generateIsometricChart()
   }
 
   let observer = null
@@ -535,7 +566,13 @@ const generateIsometricChart = () => {
     observer?.disconnect()
     const target = document.querySelector('main') || document.body
     observer = new MutationObserver(() => initIfReady())
-    observer.observe(target, { childList: true, subtree: true })
+    observer.observe(target, {
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-labelledby', 'for', 'id'],
+      subtree: true
+    })
   }
 
   await getSettings()
@@ -544,7 +581,7 @@ const generateIsometricChart = () => {
     if (document.querySelector('.ic-contributions-wrapper')) {
       applyTheme()
       refreshColors()
-      renderIsometricChart()
+      renderCharts()
     }
   }
 
