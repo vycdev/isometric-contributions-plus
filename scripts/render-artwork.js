@@ -92,6 +92,17 @@ try {
     for (const file of script.js)
       await page.addScriptTag({ content: await read(`dist/${file}`) })
     await page.waitForSelector('#ic-height-scale-label')
+    const daySizes = await page.$$eval('td[data-date]', (nodes) =>
+      nodes.map((node) => {
+        const { width, height } = node.getBoundingClientRect()
+        return { width, height }
+      })
+    )
+    assert.equal(daySizes.length, sampleDays.length)
+    for (const { width, height } of daySizes) {
+      assert.equal(width, 10, 'Calendar days retain their 10px width')
+      assert.equal(height, width, 'Calendar days are square in the artwork')
+    }
     const section = await page.$('.js-yearly-contributions')
     const statsText = () =>
       page.$$eval('.ic-accent', (nodes) =>

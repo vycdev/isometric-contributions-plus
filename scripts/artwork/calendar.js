@@ -17,6 +17,22 @@ export const sampleDays = Array.from({ length: 364 }, (_, i) => {
 })
 
 export const calendarHtml = (days = sampleDays) => {
+  const months = []
+  const monthFormat = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    timeZone: 'UTC'
+  })
+  for (let i = 0; i < days.length; i += 7) {
+    const label = monthFormat.format(new Date(days[i].date))
+    if (months.at(-1)?.label === label) {
+      months.at(-1).weeks++
+    } else {
+      months.push({ label, weeks: 1 })
+    }
+  }
+  const monthHeaders = months
+    .map(({ label, weeks }) => `<th colspan="${weeks}">${label}</th>`)
+    .join('')
   const rows = Array.from(
     { length: 7 },
     (_, row) =>
@@ -42,8 +58,9 @@ export const calendarHtml = (days = sampleDays) => {
     <section class="js-yearly-contributions">
       <h2>${days.reduce((total, day) => total + day.count, 0).toLocaleString('en-US')} contributions in the last year</h2>
       <div class="chart-frame"><div class="js-calendar-graph">
-        <div class="months">Nov　　Dec　　Jan　　Feb　　Mar　　Apr　　May　　Jun　　Jul　　Aug　　Sep　　Oct</div>
-        <table class="js-calendar-graph-table"><tbody>${rows}</tbody></table>
+        <table class="js-calendar-graph-table">
+          <thead class="months"><tr>${monthHeaders}</tr></thead>
+          <tbody>${rows}</tbody></table>
         <div class="calendar-footer"><span>Learn how we count contributions</span>
           <div class="calendar-legend">Less ${legend} More</div></div>
         ${days.map((day, i) => `<tool-tip id="day-${i}">${day.count} contributions on ${day.date}</tool-tip>`).join('')}
