@@ -66,7 +66,7 @@ Useful contributor commands:
 
 - `pnpm run start`: watch the extension during development.
 - `pnpm run test:unit` / `pnpm run test:tooling`: run the unit or helper checks independently.
-- `pnpm run test:e2e`: build Chrome and run the live GitHub health check using Puppeteer.
+- `pnpm run test:e2e`: ensure Puppeteer's pinned Chrome is downloaded, build the extension, and run the live GitHub health check. The browser download is checked explicitly because a restored pnpm store can skip install scripts without restoring Puppeteer's separate cache.
 - `pnpm run build:all`: create Chrome, Edge, and Firefox ZIPs in `artifacts/` using the local `web-ext` tool; no system `zip` command is required.
 - `pnpm run build:safari --resources-only`: build and sync Safari resources on any platform.
 - `pnpm run build:safari` / `pnpm run build:safari:release`: also build the macOS app (requires macOS and Xcode).
