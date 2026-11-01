@@ -85,6 +85,7 @@ jobs:
           test -n "$APPLE_INSTALLER_CERT_PASSWORD"
 
           KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -147,7 +148,6 @@ jobs:
 
       - name: Build installer package
         run: |
-          set -x
           APP_PATH="$ARCHIVE_PATH/Products/Applications/Isometric Contributions Plus.app"
 
           echo "=== Archive contents ==="
