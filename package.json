@@ -30,6 +30,7 @@
     "test:unit": "vitest run",
     "test:tooling": "node --test scripts/pnpm.test.js scripts/build.test.js scripts/test-e2e.test.js",
     "test:e2e": "node scripts/test-e2e.js",
+    "test:popup-persistence": "node scripts/test-popup-persistence.js",
     "test:watch": "vitest",
     "version:get": "node scripts/version.js get",
     "version:set": "node scripts/version.js set",

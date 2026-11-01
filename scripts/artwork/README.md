@@ -8,11 +8,13 @@ GitHub's theme attributes or the OS preference changes.
 
 ## Integration with #2 and the merged #3
 
-- #2 can override `--ic-level-0` through `--ic-level-4`, `--ic-accent`, and
-  `--ic-selected` on the contribution area and popup. The light/dark default
-  tokens remain the reset values. No color preference or picker is added here.
-- The merged #3 keeps GitHub's original data-level values and samples their
-  unscaled fills for cube colors. Its continuous 2D renderer writes
+- The color picker overrides `--ic-level-0` through `--ic-level-4`, `--ic-accent`,
+  and `--ic-selected` on the contribution area and popup with the palette derived
+  by `src/palette.js`. Reset restores the shared blue base color (`#0969da`).
+  The CSS tokens provide blue defaults before settings finish loading.
+- The merged #3 keeps GitHub's original data-level values for cube color buckets.
+  The runtime passes the same five selected palette stops to the continuous
+  2D renderer, which writes
   --ic-intensity-color on dated cells. The scaled-calendar selector maps that
   value to --ic-day-color, so blue defaults and count-based intensity work
   together without changing square geometry.

@@ -2,6 +2,10 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { intensityColor } from './calendar.js'
 import { fetchExtendedStreakData } from './history.js'
+import {
+  createContributionPalette,
+  DEFAULT_CONTRIBUTION_COLOR
+} from './palette.js'
 import { contributionIntensity } from './utils.js'
 
 vi.mock('./history.js', () => ({ fetchExtendedStreakData: vi.fn() }))
@@ -25,18 +29,35 @@ const showCalendar = (days) => {
         <table class="js-calendar-graph-table"><tbody><tr>${days
           .map(
             (d, i) =>
-              `<td class="ContributionCalendar-day" data-date="${d.date.toISOString().slice(0, 10)}" data-level="${d.count > 0 ? 4 : 0}" data-ix="0" aria-labelledby="tip-${i}" style="width: 10px;"></td>`
+              `<td class="ContributionCalendar-day" data-date="${d.date.toISOString().slice(0, 10)}" data-level="${d.count === 0 ? 0 : Math.min(i + 1, 4)}" data-ix="0" aria-labelledby="tip-${i}" style="width:10px;"></td>`
           )
           .join('')}</tr></tbody></table>
         ${days.map((d, i) => `<tool-tip id="tip-${i}">${d.count} contributions on a day</tool-tip>`).join('')}
       </div></div>
+      <div id="user-activity-overview">
+        <svg class="js-activity-overview-graph" aria-label="Contribution types">
+          <path class="js-highlight-blob" d="M 50 48 L 51 50 L 50 53 L 6 50 Z" fill="#40c463" stroke="#40c463" opacity="0.5" />
+          <line class="activity-overview-axis" x1="0" y1="50" x2="100" y2="50" />
+          <line class="activity-overview-axis" x1="50" y1="0" x2="50" y2="100" />
+          <ellipse class="activity-overview-point" cx="6" cy="50" rx="3" ry="3" fill="white" />
+          <text>94% Commits</text><text>3% Pull requests</text>
+          <text>2% Code review</text><text>1% Issues</text>
+        </svg>
+      </div>
+    </section><section id="js-contribution-activity" class="contribution-activity">
+      <h2>Contribution activity</h2>
+      <div class="Progress" role="img" aria-label="59% of commits">
+        <span class="Progress-item rounded-2" style="width:59%;background-color:#30a14e"></span>
+      </div>
+      <span class="repo-language-color" style="background-color:#f1e05a"></span>
     </section></main>`
 }
 
 let onNavigate
 let onThemeChange
-let onColorSchemeChange
-let onCalendarChange
+let onSystemThemeChange
+let onPageMutation
+let systemTheme
 const renderedHeights = []
 const renderedColors = []
 const clearChart = vi.fn(() => {
@@ -47,17 +68,23 @@ const clearChart = vi.fn(() => {
 beforeEach(() => {
   vi.resetModules()
   onNavigate = null
+  onThemeChange = null
+  onSystemThemeChange = null
+  onPageMutation = null
+  delete document.documentElement.dataset.colorMode
   localStorage.clear()
   vi.spyOn(document, 'addEventListener').mockImplementation(
     (name, listener) => {
       if (name === 'turbo:load') onNavigate = listener
     }
   )
-  vi.stubGlobal('matchMedia', () => ({
-    addEventListener(_name, listener) {
-      onColorSchemeChange = listener
+  systemTheme = {
+    matches: false,
+    addEventListener: (_event, listener) => {
+      onSystemThemeChange = listener
     }
-  }))
+  }
+  vi.stubGlobal('matchMedia', () => systemTheme)
   vi.stubGlobal(
     'MutationObserver',
     class {
@@ -66,7 +93,7 @@ beforeEach(() => {
       }
       observe(target) {
         if (target === document.documentElement) onThemeChange = this.callback
-        else onCalendarChange = this.callback
+        else onPageMutation = this.callback
       }
       disconnect() {}
     }
@@ -108,22 +135,29 @@ const outlierCalendar = () => [
   day('2024-01-03', 609)
 ]
 
-const palette = [
-  'rgb(235, 237, 240)',
-  'rgb(155, 233, 168)',
-  'rgb(64, 196, 99)',
-  'rgb(48, 161, 78)',
-  'rgb(33, 110, 57)'
-]
+const palette = createContributionPalette(DEFAULT_CONTRIBUTION_COLOR).levels
 const calendarColors = () =>
   [...document.querySelectorAll('td.ContributionCalendar-day')].map((element) =>
     element.style.getPropertyValue('--ic-intensity-color')
   )
-const expectedColors = (scale, counts = [0, 10, 609]) =>
+const calendarData = () => ({
+  days: [...document.querySelectorAll('td.ContributionCalendar-day')].map(
+    (element) => ({
+      ...element.dataset,
+      tooltip: element.getAttribute('aria-labelledby'),
+      width: element.style.width,
+      height: element.style.height
+    })
+  ),
+  tooltips: [...document.querySelectorAll('tool-tip')].map(
+    (element) => element.outerHTML
+  )
+})
+const expectedColors = (scale, counts = [0, 10, 609], stops = palette) =>
   counts.map((count) =>
     intensityColor(
       contributionIntensity(count, Math.max(...counts), scale),
-      palette
+      stops
     )
   )
 
@@ -166,14 +200,11 @@ it.each([
         (span) => span.textContent
       )
     const originalStats = statValues()
+    const originalCalendar = calendarData()
     const originalColors = [...renderedColors]
-    const originalTooltips = [...document.querySelectorAll('tool-tip')].map(
-      (element) => element.outerHTML
-    )
-    const originalDayData = [
-      ...document.querySelectorAll('td.ContributionCalendar-day')
-    ].map((element) => ({ ...element.dataset }))
-    expect(calendarColors()).toEqual(expectedColors('linear'))
+    const originalOverview = document.getElementById(
+      'user-activity-overview'
+    ).innerHTML
     expect(document.getElementById('ic-height-scale')).toBeNull()
     expect(canvas.getAttribute('aria-label')).toContain('linear')
     expect(scaleLabel.textContent).toBe('Scale: Linear')
@@ -188,20 +219,11 @@ it.each([
     expect(scaleLabel.textContent).toBe(`Scale: ${label}`)
     expect(scaleLabel.title).toBe(canvas.title)
     expect(statValues()).toEqual(originalStats)
+    expect(calendarData()).toEqual(originalCalendar)
     expect(calendarColors()).toEqual(expectedColors(scale))
-    expect(
-      [...document.querySelectorAll('tool-tip')].map(
-        (element) => element.outerHTML
-      )
-    ).toEqual(originalTooltips)
-    expect(
-      [...document.querySelectorAll('td.ContributionCalendar-day')].map(
-        (element) => ({ ...element.dataset })
-      )
-    ).toEqual(originalDayData)
-    expect(
-      document.getElementById('ic-calendar-scale-label').textContent
-    ).toContain(`Scale: ${label}`)
+    expect(document.getElementById('user-activity-overview').innerHTML).toBe(
+      originalOverview
+    )
 
     notify({ heightScale: { newValue: 'linear' } })
     expect(renderedHeights).toEqual([3, 4, 103])
@@ -223,13 +245,22 @@ it.each(['GitHub theme', 'OS preference'])(
       '.ic-contributions-wrapper'
     ).textContent
     const originalColors = [...renderedColors]
-    for (const cell of document.querySelectorAll('td')) {
-      cell.style.fill = 'rgb(56, 139, 253)'
-    }
+    if (source === 'GitHub theme')
+      document.documentElement.dataset.colorMode = 'dark'
+    else systemTheme.matches = true
     const notify =
-      source === 'GitHub theme' ? onThemeChange : onColorSchemeChange
+      source === 'GitHub theme' ? onThemeChange : onSystemThemeChange
     notify()
-    expect(renderedColors).toEqual([0x388bfd, 0x388bfd, 0x388bfd])
+    const darkPalette = createContributionPalette(
+      DEFAULT_CONTRIBUTION_COLOR,
+      true
+    ).levels
+    expect(renderedColors).toEqual(
+      [0, 2, 3].map((level) => Number.parseInt(darkPalette[level].slice(1), 16))
+    )
+    expect(calendarColors()).toEqual(
+      expectedColors('linear', undefined, darkPalette)
+    )
     expect(renderedColors).not.toEqual(originalColors)
     expect(renderedHeights).toEqual([3, 4, 103])
     expect(
@@ -324,28 +355,18 @@ it.each(['linear', 'square-root', 'logarithmic'])(
   }
 )
 
-it('resamples palette colors on GitHub theme and system theme changes', async () => {
+it('updates 2D intensity colors on GitHub theme and system theme changes', async () => {
   mockChromeStorage({ heightScale: 'square-root' })
   showCalendar(outlierCalendar())
   await import('./iso.js')
   await vi.waitFor(() =>
     expect(calendarColors()).toEqual(expectedColors('square-root'))
   )
-  const darkPalette = [
-    'rgb(22, 27, 34)',
-    'rgb(14, 68, 41)',
-    'rgb(0, 109, 50)',
-    'rgb(38, 166, 65)',
-    'rgb(57, 211, 83)'
-  ]
-  const theme = document.createElement('style')
-  theme.textContent = darkPalette
-    .map(
-      (color, level) =>
-        `.ContributionCalendar-day[data-level="${level}"] { fill: ${color}; }`
-    )
-    .join('')
-  document.body.append(theme)
+  const darkPalette = createContributionPalette(
+    DEFAULT_CONTRIBUTION_COLOR,
+    true
+  ).levels
+  document.documentElement.dataset.colorMode = 'dark'
   onThemeChange()
   const darkColors = [0, 10, 609].map((count) =>
     intensityColor(
@@ -354,11 +375,16 @@ it('resamples palette colors on GitHub theme and system theme changes', async ()
     )
   )
   expect(calendarColors()).toEqual(darkColors)
-  expect(renderedColors).toEqual([0x161b22, 0x39d353, 0x39d353])
-  onColorSchemeChange()
+  const darkCubeColors = [0, 2, 3].map((level) =>
+    Number.parseInt(darkPalette[level].slice(1), 16)
+  )
+  expect(renderedColors).toEqual(darkCubeColors)
+  document.documentElement.dataset.colorMode = 'auto'
+  systemTheme.matches = true
+  onSystemThemeChange()
   expect(calendarColors()).toEqual(darkColors)
-  expect(renderedColors).toEqual([0x161b22, 0x39d353, 0x39d353])
-  theme.remove()
+  expect(renderedColors).toEqual(darkCubeColors)
+  systemTheme.matches = false
   onThemeChange()
   expect(calendarColors()).toEqual(expectedColors('square-root'))
 })
@@ -395,7 +421,7 @@ it.each(['missing', 'loading'])(
     tooltip.textContent = '10 contributions on January 2nd.'
     if (state === 'missing')
       document.querySelector('.js-calendar-graph').append(tooltip)
-    onCalendarChange()
+    onPageMutation()
     expect(calendarColors()).toEqual(expectedColors('square-root'))
     expect(
       document.querySelector('.ic-contributions-wrapper .f2').textContent
@@ -471,6 +497,160 @@ it('remembers changes made while no chart is present for the next profile', asyn
   showCalendar(outlierCalendar())
   onNavigate()
   expect(renderedHeights).toEqual([3, 40, 103])
+})
+
+const expectPalette = (color, dark = false, scale = 'linear') => {
+  const palette = createContributionPalette(color, dark)
+  const box = document.querySelector('.js-yearly-contributions')
+  palette.levels.forEach((shade, level) => {
+    expect(box.style.getPropertyValue(`--ic-level-${level}`)).toBe(shade)
+  })
+  expect(box.style.getPropertyValue('--ic-accent')).toBe(palette.accent)
+  const activity = document.getElementById('js-contribution-activity')
+  expect(activity.classList).toContain('ic-activity-themed')
+  expect(activity.style.getPropertyValue('--ic-accent')).toBe(palette.accent)
+  expect(calendarColors()).toEqual(
+    expectedColors(scale, undefined, palette.levels)
+  )
+  expect(renderedColors).toEqual(
+    [0, 2, 3].map((level) =>
+      Number.parseInt(palette.levels[level].slice(1), 16)
+    )
+  )
+}
+
+it.each(
+  ['squares', 'cubes', 'both'].flatMap((view) =>
+    ['linear', 'square-root', 'logarithmic'].map((scale) => [view, scale])
+  )
+)(
+  'updates colors in %s with %s heights without changing any contribution data',
+  async (view, scale) => {
+    const notify = mockChromeStorage({
+      toggleSetting: view,
+      heightScale: scale
+    })
+    showCalendar(outlierCalendar())
+    const originalCalendar = calendarData()
+    const originalOverview = document.getElementById(
+      'user-activity-overview'
+    ).innerHTML
+    const originalActivity = document.getElementById(
+      'js-contribution-activity'
+    ).innerHTML
+    await import('./iso.js')
+    await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
+    expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale)
+    const originalHeights = [...renderedHeights]
+    const originalStats = document.querySelector(
+      '.ic-contributions-wrapper'
+    ).textContent
+    notify({ contributionColor: { newValue: '#d040a0' } })
+    expectPalette('#d040a0', false, scale)
+    expect(document.getElementById('user-activity-overview').innerHTML).toBe(
+      originalOverview
+    )
+    expect(document.getElementById('js-contribution-activity').innerHTML).toBe(
+      originalActivity
+    )
+    expect(renderedHeights).toEqual(originalHeights)
+    expect(calendarData()).toEqual(originalCalendar)
+    expect(
+      document.querySelector('.ic-contributions-wrapper').textContent
+    ).toBe(originalStats)
+    expect(
+      document.querySelector('.js-yearly-contributions').classList
+    ).toContain(`ic-${view}`)
+    notify({ contributionColor: { oldValue: '#d040a0' } })
+    expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale)
+    expect(document.getElementById('user-activity-overview').innerHTML).toBe(
+      originalOverview
+    )
+    expect(document.getElementById('js-contribution-activity').innerHTML).toBe(
+      originalActivity
+    )
+  }
+)
+
+it('themes a timeline loaded after the calendar and preserves appended activity data', async () => {
+  const notify = mockChromeStorage({ contributionColor: '#aa00cc' })
+  showCalendar(outlierCalendar())
+  const timeline = document.getElementById('js-contribution-activity')
+  const originalActivity = timeline.innerHTML
+  timeline.remove()
+  await import('./iso.js')
+  await vi.waitFor(() => expect(onPageMutation).toBeTypeOf('function'))
+  document.querySelector('main').append(timeline)
+  onPageMutation()
+  expectPalette('#aa00cc')
+  const bar = timeline.querySelector('.Progress').cloneNode(true)
+  bar.setAttribute('aria-label', '1% of commits')
+  bar.firstElementChild.style.width = '1%'
+  timeline.append(bar)
+  const appendedMarkup = timeline.innerHTML
+  onPageMutation()
+  notify({ contributionColor: { newValue: '#ee8800' } })
+  expectPalette('#ee8800')
+  expect(timeline.innerHTML).toBe(appendedMarkup)
+  expect(timeline.innerHTML).toContain(originalActivity)
+})
+
+it.each(['localStorage', 'chrome.storage.local'])(
+  'restores the %s color after reloads, profile changes, and year changes',
+  async (storageType) => {
+    if (storageType === 'localStorage') {
+      localStorage.setItem('contributionColor', '#ad3050')
+    } else {
+      mockChromeStorage({ contributionColor: '#ad3050' })
+    }
+    showCalendar(outlierCalendar())
+    await import('./iso.js')
+    await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
+    expectPalette('#ad3050')
+    for (const location of ['/new-profile', '/new-profile?from=2023-01-01']) {
+      window.history.replaceState(null, '', location)
+      showCalendar(outlierCalendar())
+      onNavigate()
+      expectPalette('#ad3050')
+    }
+  }
+)
+
+it('updates an existing chart for GitHub theme changes and system theme changes', async () => {
+  mockChromeStorage({ contributionColor: '#ffff00' })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
+  const heights = [...renderedHeights]
+  const stats = document.querySelector('.ic-contributions-wrapper').textContent
+  document.documentElement.dataset.colorMode = 'dark'
+  onThemeChange()
+  expectPalette('#ffff00', true)
+  document.documentElement.dataset.colorMode = 'light'
+  systemTheme.matches = true
+  onSystemThemeChange()
+  expectPalette('#ffff00', false)
+  document.documentElement.dataset.colorMode = 'auto'
+  onThemeChange()
+  expectPalette('#ffff00', true)
+  expect(renderedHeights).toEqual(heights)
+  expect(document.querySelector('.ic-contributions-wrapper').textContent).toBe(
+    stats
+  )
+})
+
+it('remembers color changes without a chart and ignores invalid or unrelated updates', async () => {
+  const notify = mockChromeStorage()
+  await import('./iso.js')
+  await vi.waitFor(() => expect(onNavigate).toBeTypeOf('function'))
+  notify({ contributionColor: { newValue: '#aa00cc' } })
+  showCalendar(outlierCalendar())
+  onNavigate()
+  expectPalette('#aa00cc')
+  notify({ contributionColor: { newValue: '#ff0000' } }, 'sync')
+  expectPalette('#aa00cc')
+  notify({ contributionColor: { newValue: 'invalid' } })
+  expectPalette(DEFAULT_CONTRIBUTION_COLOR)
 })
 
 it.each(['another profile', 'another year on the same profile'])(

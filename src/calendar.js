@@ -25,8 +25,13 @@ export const intensityColor = (intensity, palette) => {
   return `color-mix(in srgb, ${palette[lower]}, ${palette[upper]} ${(position - lower) * 100}%)`
 }
 
-export const renderCalendarIntensity = (graph, days, maxCount, scale) => {
-  const palette = readCalendarPalette(graph)
+export const renderCalendarIntensity = (
+  graph,
+  days,
+  maxCount,
+  scale,
+  palette = readCalendarPalette(graph)
+) => {
   const counts = new Map(
     days.map((day) => [day.date.toISOString().slice(0, 10), day.count])
   )

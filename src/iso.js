@@ -1,5 +1,12 @@
 import { renderCalendarIntensity } from './calendar.js'
 import { fetchExtendedStreakData } from './history.js'
+import {
+  applyContributionPalette,
+  createContributionPalette,
+  DEFAULT_CONTRIBUTION_COLOR,
+  isDarkTheme,
+  normalizeContributionColor
+} from './palette.js'
 import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 import {
   applyViewType,
@@ -57,6 +64,9 @@ let datesCurrent = null
 let dateBest = null
 let toggleSetting = 'cubes'
 let heightScale = 'linear'
+let contributionColor = DEFAULT_CONTRIBUTION_COLOR
+const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)')
+let palette
 let chartGeneration = 0
 let historyRequest = null
 
@@ -100,6 +110,13 @@ const getSettings = async () => {
     'linear'
   )
   heightScale = normalizeHeightScale(savedHeightScale)
+  contributionColor = normalizeContributionColor(
+    await loadSetting(
+      getStorage(),
+      'contributionColor',
+      DEFAULT_CONTRIBUTION_COLOR
+    )
+  )
   return 'Settings loaded'
 }
 
@@ -281,18 +298,36 @@ const setContainerViewType = (type) => {
   applyViewType(contributionsBox, type)
 }
 
-const getSquareColor = (rect) => getElementColor(rect)
+const getSquareColor = (rect) =>
+  palette.levels[Number(rect.dataset.level)]?.slice(1) ?? getElementColor(rect)
+
+const themeContributionActivity = () => {
+  const activity = document.getElementById('js-contribution-activity')
+  if (!activity || !palette) return
+  activity.classList.add('ic-activity-themed')
+  applyContributionPalette(activity, palette)
+}
+
+const applyTheme = () => {
+  palette = createContributionPalette(
+    contributionColor,
+    isDarkTheme(document.documentElement, colorScheme.matches)
+  )
+  contributionsBox.classList.add('ic-themed')
+  applyContributionPalette(contributionsBox, palette)
+  themeContributionActivity()
+}
 
 const refreshColors = () => {
-  // Read original palette levels for 3D colors, not scaled 2D intensity.
   calendarGraph.classList.remove('ic-calendar-scaled')
   const dayElements = calendarGraph.querySelectorAll(
     '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
   )
+  const byDate = new Map(
+    [...dayElements].map((node) => [node.dataset.date, node])
+  )
   for (const d of days) {
-    const element = [...dayElements].find(
-      (node) => node.dataset.date === d.date.toISOString().split('T')[0]
-    )
+    const element = byDate.get(d.date.toISOString().slice(0, 10))
     if (element) {
       d.color = getSquareColor(element)
     }
@@ -433,7 +468,13 @@ const renderIsometricChart = () => {
 }
 
 const renderCharts = () => {
-  renderCalendarIntensity(calendarGraph, days, maxCount, heightScale)
+  renderCalendarIntensity(
+    calendarGraph,
+    days,
+    maxCount,
+    heightScale,
+    palette.levels
+  )
   renderIsometricChart()
 }
 
@@ -483,6 +524,7 @@ const generateIsometricChart = () => {
   contributionsBox = document.querySelector('.js-yearly-contributions')
 
   resetValues()
+  applyTheme()
   calendarGraph.classList.remove('ic-calendar-scaled')
   initUI()
   loadStats()
@@ -494,6 +536,7 @@ const generateIsometricChart = () => {
 
 ;(async () => {
   const initIfReady = () => {
+    themeContributionActivity()
     const graph = document.querySelector('.js-calendar-graph')
     if (!graph || document.querySelector('.ic-contributions-wrapper')) return
     // GitHub can insert the calendar before its count tooltips. Keep its native
@@ -534,33 +577,33 @@ const generateIsometricChart = () => {
 
   await getSettings()
 
-  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== 'local' || !changes.heightScale) return
-      const nextScale = normalizeHeightScale(changes.heightScale.newValue)
-      if (heightScale === nextScale) return
-      heightScale = nextScale
-      if (document.querySelector('.ic-contributions-wrapper')) {
-        renderCharts()
-      }
-    })
-  }
-
-  globalThis
-    .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', () => {
-      if (document.querySelector('.ic-contributions-wrapper')) {
-        refreshColors()
-        renderCharts()
-      }
-    })
-
-  new MutationObserver(() => {
+  const refreshTheme = () => {
     if (document.querySelector('.ic-contributions-wrapper')) {
+      applyTheme()
       refreshColors()
       renderCharts()
     }
-  }).observe(document.documentElement, {
+  }
+
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return
+      const nextScale = changes.heightScale
+        ? normalizeHeightScale(changes.heightScale.newValue)
+        : heightScale
+      const nextColor = changes.contributionColor
+        ? normalizeContributionColor(changes.contributionColor.newValue)
+        : contributionColor
+      if (heightScale === nextScale && contributionColor === nextColor) return
+      heightScale = nextScale
+      contributionColor = nextColor
+      refreshTheme()
+    })
+  }
+
+  colorScheme.addEventListener('change', refreshTheme)
+  const themeObserver = new MutationObserver(refreshTheme)
+  themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-color-mode', 'data-light-theme', 'data-dark-theme']
   })
@@ -572,8 +615,7 @@ const generateIsometricChart = () => {
       document.visibilityState === 'visible' &&
       document.querySelector('.ic-contributions-wrapper')
     ) {
-      refreshColors()
-      renderCharts()
+      refreshTheme()
     }
   })
 })()

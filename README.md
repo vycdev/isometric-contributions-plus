@@ -30,10 +30,16 @@ The 2D colors interpolate through the current palette; legend swatches represent
 
 ### Palette integration
 
-`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. `src/calendar.js` samples the five unscaled `.ContributionCalendar-day[data-level="0".."4"]` fill colors, then interpolates between adjacent stops. Theme and configurable-palette changes should supply those fill colors (including a neutral level 0) and trigger the existing chart refresh after applying the palette. The intensity renderer writes only `--ic-intensity-color` on dated squares; it preserves `data-level` so original colors can still be sampled for 3D. The blue identity (#1) and color settings (#2) can integrate here without changing the normalization or adding another scale preference. The existing `heightScale` storage key is retained for compatibility.
+`contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. The runtime supplies its five selected palette stops to `src/calendar.js`, which interpolates between adjacent stops; standalone callers can also sample the unscaled `.ContributionCalendar-day[data-level="0".."4"]` fills. The intensity renderer writes `--ic-intensity-color` on dated squares and preserves `data-level`. Cubes keep the original activity buckets while using the selected palette and height scale. Color and appearance changes refresh both views and their legends together. The existing `heightScale` storage key is retained for compatibility.
 
 <img src="img/settings-light.png" width="328" alt="Blue settings menu in light mode" />
 <img src="img/settings-dark.png" width="328" alt="Blue settings menu in dark mode" />
+
+## Contribution color
+
+Open the extension's toolbar menu and choose a **Contribution color**. Readable intensity shades are derived from that color for light and dark themes. The calendar, its legend, the isometric cubes, contribution statistics, Activity overview chart, Contribution activity bars, and view controls update together on open GitHub profiles. **Reset to blue** restores the default color (`#0969da`) without changing the height scale.
+
+Your color is saved across profiles, selected years, and reloads. It works in 2D, 3D, and Both modes with every height scale. Colors only change presentation: contribution counts, dates, tooltips, statistics, and GitHub's intensity buckets retain their original values.
 
 ## Installation
 
