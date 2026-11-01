@@ -278,7 +278,7 @@ const target = process.argv.slice(2).find((a) => !a.startsWith('--'))
 
 if (!target) {
   console.error(
-    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run]'
+    'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run]'
   )
   process.exit(1)
 }
@@ -294,7 +294,7 @@ const handlers = {
 if (!handlers[target]) {
   console.error(`Unknown target: ${target}`)
   console.error(
-    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run]'
+    'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run]'
   )
   process.exit(1)
 }

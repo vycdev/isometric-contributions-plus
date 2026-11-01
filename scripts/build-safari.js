@@ -123,14 +123,12 @@ function buildXcode(configuration = 'Debug') {
 }
 
 function buildParcel() {
+  const command = pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json'])
+  // Firefox packaging rewrites the output manifest. Clear it before Parcel
+  // can reuse that cached output for Safari.
+  fs.rmSync(distDir, { recursive: true, force: true })
   console.log('Running Parcel build...\n')
-  execFileSync(
-    ...pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json']),
-    {
-      cwd: rootDir,
-      stdio: 'inherit'
-    }
-  )
+  execFileSync(...command, { cwd: rootDir, stdio: 'inherit' })
   console.log()
 }
 

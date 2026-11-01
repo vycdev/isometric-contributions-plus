@@ -7,11 +7,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [22.x, 24.x]
 
     steps:
+      - name: Preserve LF line endings on Windows
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v5
       - name: Setup pnpm
         uses: pnpm/action-setup@v6

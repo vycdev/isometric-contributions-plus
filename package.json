@@ -17,7 +17,7 @@
     "lint:fix": "biome check --write",
     "test": "biome check && pnpm run test:unit && pnpm run test:tooling",
     "test:unit": "vitest run",
-    "test:tooling": "node --test scripts/pnpm.test.js",
+    "test:tooling": "node --test scripts/pnpm.test.js scripts/build.test.js",
     "test:e2e": "node scripts/test-e2e.js",
     "test:watch": "vitest",
     "version:get": "node scripts/version.js get",

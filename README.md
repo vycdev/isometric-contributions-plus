@@ -50,6 +50,11 @@ pnpm test
 pnpm run build
 ```
 
+On Windows, clone with `git -c core.autocrlf=false clone <repository-url>` so
+checkout preserves the LF line endings expected by Biome. The Windows CI jobs
+also preserve LF during checkout; existing CRLF checkouts may need their line
+endings corrected before the full formatting check passes.
+
 Commit `pnpm-lock.yaml` when dependencies change. It was imported from the npm
 lockfile to retain existing resolutions. Dependabot intentionally uses its `npm`
 ecosystem setting, which also supports pnpm's v9 lockfile. Overrides and install
@@ -69,8 +74,8 @@ Useful contributor commands:
 - `pnpm run submit:chrome`, `pnpm run submit:edge`, `pnpm run submit:firefox`, and `pnpm run release`: publish using the configured store credentials.
 
 Run script helpers through their `pnpm run` commands so child processes reuse
-the pinned pnpm CLI on Windows, macOS, and Linux. Local
-tools use `pnpm exec` and do not download an unpinned CLI. `web-ext` is declared
+the pinned pnpm CLI on Windows, macOS, and Linux, including standalone pnpm
+installations. Local tools use `pnpm exec` and do not download an unpinned CLI. `web-ext` is declared
 directly because Firefox submission and ZIP packaging use its executable.
 `pnpm run submit:dry-run` does not publish, but it requires store credentials and
 contacts Google's token endpoint to validate them; it is not an offline check.

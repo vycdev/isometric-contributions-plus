@@ -13,7 +13,7 @@ Isometric Contributions is a browser extension (Chrome/Brave, Firefox, Edge) tha
 - `pnpm run start` - Watch mode for development (serves from localhost)
 - `pnpm test` - Run Biome, unit tests, and script tooling checks
 - `pnpm run test:unit` - Run unit tests independently of formatting checks
-- `pnpm run test:tooling` - Check cross-platform pnpm subprocess execution
+- `pnpm run test:tooling` - Check pnpm subprocesses and browser build regressions
 - Run helpers through their `pnpm run` scripts.
 
 ## Code Style

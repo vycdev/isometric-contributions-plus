@@ -31,11 +31,15 @@ function readManifest() {
 }
 
 function writeManifest(manifest) {
+  const command = pnpmCommand([
+    'exec',
+    'biome',
+    'format',
+    '--write',
+    manifestPath
+  ])
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-  execFileSync(
-    ...pnpmCommand(['exec', 'biome', 'format', '--write', manifestPath]),
-    { cwd: rootDir, stdio: 'ignore' }
-  )
+  execFileSync(...command, { cwd: rootDir, stdio: 'ignore' })
 }
 
 function updateSafariVersion(newVersion) {
@@ -119,7 +123,7 @@ function setVersion(newVersion) {
 const command = process.argv[2]
 
 if (!command) {
-  console.error('Usage: node scripts/version.js <get|patch|minor|major|set>')
+  console.error('Usage: pnpm run version:<get|patch|minor|major|set> [version]')
   process.exit(1)
 }
 
@@ -142,7 +146,7 @@ switch (command) {
   case 'set': {
     const version = process.argv[3]
     if (!version) {
-      console.error('Usage: node scripts/version.js set <version>')
+      console.error('Usage: pnpm run version:set <version>')
       process.exit(1)
     }
 
@@ -157,7 +161,9 @@ switch (command) {
 
   default: {
     console.error(`Unknown command: ${command}`)
-    console.error('Usage: node scripts/version.js <get|patch|minor|major|set>')
+    console.error(
+      'Usage: pnpm run version:<get|patch|minor|major|set> [version]'
+    )
     process.exit(1)
   }
 }

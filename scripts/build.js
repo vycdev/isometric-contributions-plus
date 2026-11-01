@@ -108,6 +108,8 @@ function createZip(browser) {
 }
 
 function build(browser) {
+  // Validate the launcher before deleting an existing build.
+  pnpmCommand([])
   console.log(`\n=== Building for ${browser} ===\n`)
 
   cleanDir(distDir)
@@ -151,7 +153,7 @@ function buildAll() {
 const target = process.argv[2]
 
 if (!target) {
-  console.error('Usage: node scripts/build.js <chrome|edge|firefox|all>')
+  console.error('Usage: pnpm run build:<chrome|edge|firefox|all>')
   process.exit(1)
 }
 
@@ -161,6 +163,6 @@ if (target === 'all') {
   build(target)
 } else {
   console.error(`Unknown target: ${target}`)
-  console.error('Usage: node scripts/build.js <chrome|edge|firefox|all>')
+  console.error('Usage: pnpm run build:<chrome|edge|firefox|all>')
   process.exit(1)
 }
