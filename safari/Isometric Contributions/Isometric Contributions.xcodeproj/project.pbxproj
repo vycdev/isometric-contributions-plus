@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B10000000000000000000016 /* icon-16.png in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000016 /* icon-16.png */; };
+		B10000000000000000000032 /* icon-32.png in Resources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000032 /* icon-32.png */; };
 		38E190DD541C4134932D5B26 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = E290F14F329E44BCA1888421 /* popup.html */; };
 		4B7A390D36B14BD49BCFD7DA /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 4F055A9FB6F941E7A2CF8F22 /* popup.js */; };
 		A31CA91F1D8B48EAB0621171 /* popup.css in Resources */ = {isa = PBXBuildFile; fileRef = C6F26032F98644B69BF724AA /* popup.css */; };
@@ -53,6 +55,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F10000000000000000000016 /* icon-16.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "icon-16.png"; path = "Resources/icon-16.png"; sourceTree = "<group>"; };
+		F10000000000000000000032 /* icon-32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "icon-32.png"; path = "Resources/icon-32.png"; sourceTree = "<group>"; };
 		E290F14F329E44BCA1888421 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = Resources/popup.html; sourceTree = "<group>"; };
 		4F055A9FB6F941E7A2CF8F22 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = popup.js; path = Resources/popup.js; sourceTree = "<group>"; };
 		C6F26032F98644B69BF724AA /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = popup.css; path = Resources/popup.css; sourceTree = "<group>"; };
@@ -150,6 +154,8 @@
 		966838D82F808F7200F6C07B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				F10000000000000000000016 /* icon-16.png */,
+				F10000000000000000000032 /* icon-32.png */,
 				E290F14F329E44BCA1888421 /* popup.html */,
 				4F055A9FB6F941E7A2CF8F22 /* popup.js */,
 				C6F26032F98644B69BF724AA /* popup.css */,
@@ -263,6 +269,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B10000000000000000000016 /* icon-16.png in Resources */,
+				B10000000000000000000032 /* icon-32.png in Resources */,
 				38E190DD541C4134932D5B26 /* popup.html in Resources */,
 				4B7A390D36B14BD49BCFD7DA /* popup.js in Resources */,
 				A31CA91F1D8B48EAB0621171 /* popup.css in Resources */,

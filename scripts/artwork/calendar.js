@@ -48,7 +48,7 @@ export const calendarHtml = (days = sampleDays) => {
   ).join('')
   const legend = Array.from(
     { length: 5 },
-    (_, level) => `<span class="ContributionCalendar-day"
+    (_, level) => `<span class="ContributionCalendar-day" data-level="${level}"
       style="background-color:var(--contribution-default-bgColor-${level})"></span>`
   ).join('')
   return `<!doctype html><html lang="en" data-color-mode="light"><head>

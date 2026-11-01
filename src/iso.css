@@ -79,3 +79,8 @@
 }
 
 /* Both display - no hiding needed, both are visible by default */
+
+/* Only the visual encoding changes; GitHub owns square sizes and layout. */
+.ic-calendar-scaled .ContributionCalendar-day[data-date] {
+  --ic-day-color: var(--ic-intensity-color);
+}

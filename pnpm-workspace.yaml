@@ -1,0 +1,14 @@
+overrides:
+  web-ext: ^9.2.0
+
+# Parcel's native dependencies and Puppeteer's browser download need install scripts.
+# Keep future dependencies from silently adding unreviewed install scripts.
+strictDepBuilds: true
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  fsevents: true
+  lmdb: true
+  msgpackr-extract: true
+  puppeteer: true
+  spawn-sync: true

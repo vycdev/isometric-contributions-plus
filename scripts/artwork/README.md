@@ -6,20 +6,22 @@ GitHub content keeps its own colors. Explicit GitHub light/dark settings overrid
 the OS; automatic mode follows it. The content script redraws cubes when either
 GitHub's theme attributes or the OS preference changes.
 
-## Integration with #2 and #3
+## Integration with #2 and the merged #3
 
 - #2 can override `--ic-level-0` through `--ic-level-4`, `--ic-accent`, and
   `--ic-selected` on the contribution area and popup. The light/dark default
   tokens remain the reset values. No color preference or picker is added here.
-- The 2D calendar currently keeps GitHub's `data-level` values. `iso.css` maps
-  those levels to `--ic-day-color`, and maps GitHub's current and legacy palette
-  variables to the same tokens for legends. The isometric legend also uses them.
-- #3 can assign each day's scaled color through `--ic-day-color` on the cell;
-  the existing `getElementColor`/`refreshColors` path reads its computed `fill`
-  for the cube color. Update both legends if adding a continuous intensity ramp.
-- Height calculations, counts, tooltips and streak calculations are unchanged.
-  Changes to scale descriptions/labels should be coordinated in `settings.js`
-  and `iso.js`. All three issues branch from the height-scale feature branch.
+- The merged #3 keeps GitHub's original data-level values and samples their
+  unscaled fills for cube colors. Its continuous 2D renderer writes
+  --ic-intensity-color on dated cells. The scaled-calendar selector maps that
+  value to --ic-day-color, so blue defaults and count-based intensity work
+  together without changing square geometry.
+- Both legends use the five blue palette stops; the 2D swatches mark equal
+  transformed-intensity steps. The cube colors retain the original activity
+  bins while their heights use the selected scale.
+- Counts, tooltips, and streak calculations are unchanged. Changes to scale
+  descriptions/labels should be coordinated in settings.js and iso.js. The
+  existing heightScale storage key remains compatible with saved settings.
 
 ## Reproduce the assets and visual checks
 
@@ -34,15 +36,15 @@ is unchanged. Installation screenshots use the actual extension loaded in
 headless Chrome.
 
 ```sh
-npm ci
+pnpm install --frozen-lockfile
 node scripts/render-artwork.js --icons-only
-npm run build
+pnpm run build
 node scripts/render-artwork.js
-node scripts/build-safari.js --resources-only
+pnpm run build:safari --resources-only
 ```
 
 Puppeteer needs its matching Chrome for Testing browser. If it is not installed,
-run `npx puppeteer browsers install chrome`. No server or live GitHub account is
+run `pnpm exec puppeteer browsers install chrome`. No server or live GitHub account is
 required. The script checks the built calendar, legends, canvas pixels, accents,
 statistics, view modes and all three height scales, and writes the PNGs in `img`,
 `src`, and the Safari asset directories. Commit the regenerated PNGs alongside

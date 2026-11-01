@@ -5,27 +5,21 @@ import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 // =============================================================================
 
 /**
- * Scale bar heights linearly by default, or soften peaks with a root or log.
- * In every mode, zero stays flat and the busiest day reaches maximum height.
+ * Normalize daily counts for both 3D height and 2D color intensity.
+ * Zero stays neutral and the busiest visible day reaches one.
  * @param {number} count - Contributions on this day
  * @param {number} maxCount - Contributions on the busiest visible day
- * @param {'linear'|'square-root'|'logarithmic'} scale - Height scale
- * @param {number} maxHeight - Available height above the three-pixel base
- * @returns {number} Bar height in pixels
+ * @param {'linear'|'square-root'|'logarithmic'} scale - Contribution scale
+ * @returns {number} Normalized intensity between zero and one
  */
-export const contributionHeight = (
-  count,
-  maxCount,
-  scale = 'linear',
-  maxHeight = 100
-) => {
+export const contributionIntensity = (count, maxCount, scale = 'linear') => {
   if (
     !Number.isFinite(count) ||
     !Number.isFinite(maxCount) ||
     count <= 0 ||
     maxCount <= 0
   ) {
-    return 3
+    return 0
   }
 
   const clampedCount = Math.min(count, maxCount)
@@ -35,8 +29,16 @@ export const contributionHeight = (
   } else if (scale === 'logarithmic') {
     ratio = Math.log1p(clampedCount) / Math.log1p(maxCount)
   }
-  return 3 + Math.floor(maxHeight * ratio)
+  return ratio
 }
+
+/** Scale a bar above its three-pixel base using the shared normalization. */
+export const contributionHeight = (
+  count,
+  maxCount,
+  scale = 'linear',
+  maxHeight = 100
+) => 3 + Math.floor(maxHeight * contributionIntensity(count, maxCount, scale))
 
 /**
  * Round a number to a specified precision.
@@ -95,17 +97,18 @@ export const sameDay = (d1, d2) => d1.toDateString() === d2.toDateString()
  * - "1 contribution on January 10th."
  * - "2 contributions on August 31st."
  * @param {string} text - The tooltip text content
- * @returns {number} The contribution count (0 if no match or "No contributions")
+ * @param {number|null} missingCount - Value for unavailable counts (defaults to 0)
+ * @returns {number|null} The contribution count, or missingCount if no match
  */
-export const getContributionCount = (text) => {
-  const contributionMatches = text.match(/(\d+|No) contributions? on/)
+export const getContributionCount = (text, missingCount = 0) => {
+  const contributionMatches = text.match(/([\d,]+|No) contributions? on/)
   if (!contributionMatches) {
-    return 0
+    return missingCount
   }
 
   return contributionMatches[1] === 'No'
     ? 0
-    : Number.parseInt(contributionMatches[1], 10)
+    : Number.parseInt(contributionMatches[1].replaceAll(',', ''), 10)
 }
 
 /**
@@ -248,17 +251,21 @@ export const parseCalendarGraph = (
     date: new Date(d.dataset.date),
     week: d.dataset.ix,
     color: getColorFn(d),
-    tid: d.getAttribute('aria-labelledby')
+    tid: d.getAttribute('aria-labelledby'),
+    elementId: d.id
   }))
 
   const tooltipNodes = [...tooltipElements].map((t) => ({
     tid: t.id,
-    count: getContributionCount(t.textContent)
+    target: t.getAttribute('for'),
+    count: getContributionCount(t.textContent, null)
   }))
 
   const data = dayNodes.map((d) => ({
     ...d,
-    ...tooltipNodes.find((t) => t.tid === d.tid)
+    ...tooltipNodes.find(
+      (t) => t.tid === d.tid || (d.elementId && t.target === d.elementId)
+    )
   }))
 
   return data.sort((a, b) => a.date.getTime() - b.date.getTime())

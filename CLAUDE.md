@@ -8,13 +8,17 @@ Isometric Contributions is a browser extension (Chrome/Brave, Firefox, Edge) tha
 
 ## Commands
 
-- `npm run build` - Build the extension with Parcel
-- `npm run start` - Watch mode for development (serves from localhost)
-- `npm test` - Run XO linter
+- `pnpm install --frozen-lockfile` - Install with the version pinned in package.json
+- `pnpm run build` - Build the extension with Parcel
+- `pnpm run start` - Watch mode for development (serves from localhost)
+- `pnpm test` - Run Biome, unit tests, and script tooling checks
+- `pnpm run test:unit` - Run unit tests independently of formatting checks
+- `pnpm run test:tooling` - Check pnpm subprocesses and browser build regressions
+- Run helpers through their `pnpm run` scripts.
 
 ## Code Style
 
-Uses XO linter with Prettier enabled:
+Uses Biome:
 - No semicolons
 - 2-space indentation
 - ES modules (`"type": "module"` in package.json)

@@ -2,8 +2,7 @@
 
 [英文版](README.md) | 中文版
 
-![Node.js CI](https://github.com/vycdev/isometric-contributions-plus/workflows/Node.js%20CI/badge.svg)
-[![Biome 代码样式](https://img.shields.io/badge/code_style-Biome-60a5fa.svg)](https://biomejs.dev)
+[![Node.js CI 状态](https://img.shields.io/github/actions/workflow/status/vycdev/isometric-contributions-plus/nodejs.yml?label=CI)](https://github.com/vycdev/isometric-contributions-plus/actions/workflows/nodejs.yml) [![MIT 许可证](https://img.shields.io/github/license/vycdev/isometric-contributions-plus)](LICENSE) [![通过 Patreon 支持](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
 
 这是 [Jason Long 的 Isometric Contributions](https://github.com/jasonlong/isometric-contributions) 的独立分支。它使用 [obelisk.js](https://github.com/nosir/obelisk.js) 将 GitHub 贡献日历绘制为立体像素图，支持 2D、3D 及同时显示两种视图。
 
@@ -15,15 +14,15 @@
 
 立体图可以展示贡献数量之间的细微差异，但也有局限：没有坐标轴标签，较高的柱子可能遮挡较矮的柱子，且无法悬停查看日期和数量。需要这些信息时，可切换到 2D 或同时显示两种视图。
 
-## 高度缩放
+## 贡献缩放
 
-点击扩展的工具栏图标，选择高度缩放方式：
+点击扩展的工具栏图标，在 Contribution scale 中选择 3D 柱高与 2D 颜色强度的缩放方式：
 
-- **Linear（线性，默认）**：柱高与每日贡献数量成正比。
+- **Linear（线性，默认）**：柱高与颜色强度均与每日贡献数量成正比。
 - **Square root（平方根）**：适度提升日常活动的可见度，同时保留峰值差异。
 - **Logarithmic（对数）**：进一步降低异常峰值的视觉影响，使较少的日常活动更容易辨识。
 
-设置会自动保存，跨个人主页、年份和页面刷新生效，并立即更新已打开的图表。当前缩放方式显示在每日平均值旁边。缩放只改变 3D 柱高，贡献数量、统计数据与 2D 活动等级保持不变。
+设置会自动保存，跨个人主页、年份和页面刷新生效，并立即更新 2D、3D 与同时显示模式。当前缩放方式显示在每日平均值旁边与 2D 图例下方。缩放改变 3D 柱高与 2D 颜色强度；日历方块尺寸、日期、贡献数量、提示信息与统计数据保持不变。无活动的日期保持中性色，最繁忙的可见日期达到最大强度。
 
 <img src="img/settings-light.png" width="328" alt="浅色设置菜单" />
 <img src="img/settings-dark.png" width="328" alt="深色设置菜单" />
@@ -33,11 +32,11 @@
 原扩展的商店页面提供的是原项目。要体验 **Isometric Contributions Plus**，请从本仓库构建：
 
 ```sh
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 ```
 
-在 Chrome、Brave 或 Edge 的扩展页面启用**开发者模式**，点击**加载已解压的扩展程序**，选择生成的 `dist` 目录。Firefox 打包使用 `npm run build:firefox`。Safari 构建使用 `npm run build:safari`，需要 macOS 与 Xcode。
+在 Chrome、Brave 或 Edge 的扩展页面启用**开发者模式**，点击**加载已解压的扩展程序**，选择生成的 `dist` 目录。Firefox 打包使用 `pnpm run build:firefox`。Safari 构建使用 `pnpm run build:safari`，需要 macOS 与 Xcode。
 
 <img src="img/dev-mode.png" width="981" alt="启用开发者模式并加载扩展" />
 

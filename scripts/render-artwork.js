@@ -5,7 +5,8 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
-import { contributionHeight } from '../src/utils.js'
+import { intensityColor } from '../src/calendar.js'
+import { contributionHeight, contributionIntensity } from '../src/utils.js'
 import { calendarHtml, sampleDays } from './artwork/calendar.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
@@ -197,10 +198,10 @@ try {
         // MutationObserver redraws the canvas before this frame.
         await page.evaluate(() => new Promise(requestAnimationFrame))
         const palette = await colors()
-        assert.deepEqual(palette.dayColors, palette.legendColors)
-        assert.deepEqual(palette.dayColors, palette.cubeLegendColors)
+        assert.deepEqual(palette.legendColors, palette.cubeLegendColors)
         assert.deepEqual(palette.dayColors, palette.fills)
-        assert.equal(new Set(palette.dayColors).size, 5)
+        assert.equal(new Set(palette.legendColors).size, 5)
+        assert.equal(palette.dayColors[0], palette.legendColors[0])
         const isDark = mode === 'dark' || (mode === 'auto' && os === 'dark')
         assert.equal(
           palette.accent,
@@ -232,6 +233,35 @@ try {
     const maxCount = Math.max(...sampleDays.map((day) => day.count))
     for (const scale of ['linear', 'square-root', 'logarithmic']) {
       await page.evaluate((scale) => window.changeScale(scale), scale)
+      const { legendColors } = await colors()
+      const expectedColors = sampleDays.map(({ count }) =>
+        intensityColor(
+          contributionIntensity(count, maxCount, scale),
+          legendColors
+        )
+      )
+      const calendarColors = await page.evaluate((expectedColors) => {
+        const probe = document.createElement('div')
+        document.body.append(probe)
+        const expected = expectedColors.map((color) => {
+          probe.style.backgroundColor = color
+          return getComputedStyle(probe).backgroundColor
+        })
+        probe.remove()
+        const actual = [...document.querySelectorAll('td[data-date]')]
+          .map((node) => ({
+            date: node.dataset.date,
+            color: getComputedStyle(node).backgroundColor
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map(({ color }) => color)
+        return { actual, expected }
+      }, expectedColors)
+      assert.deepEqual(
+        calendarColors.actual,
+        calendarColors.expected,
+        `Blue 2D cells use the selected ${scale} intensity through the CSS cascade`
+      )
       assert.equal(
         await page.$eval('#ic-height-scale-label', (node) => node.textContent),
         `Scale: ${{ linear: 'Linear', 'square-root': 'Square root', logarithmic: 'Logarithmic' }[scale]}`
