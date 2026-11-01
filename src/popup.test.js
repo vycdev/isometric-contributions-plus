@@ -29,6 +29,12 @@ it('loads the saved choice and persists a selection from the menu', async () => 
   await import('./popup.js')
   expect(selectedScale()).toBe('square-root')
   expect(document.querySelector('fieldset').disabled).toBe(false)
+  expect(document.querySelector('legend').textContent).toBe(
+    'Contribution scale'
+  )
+  expect(document.getElementById('scale-description').textContent).toContain(
+    '2D color intensity'
+  )
   expect(
     document.querySelector('input[value="logarithmic"]').labels[0].textContent
   ).toContain('Logarithmic')
