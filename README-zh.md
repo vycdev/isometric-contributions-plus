@@ -2,8 +2,7 @@
 
 [英文版](https://github.com/jasonlong/isometric-contributions/blob/main/README.md) | 中文版
 
-![Node.js CI](https://github.com/jasonlong/isometric-contributions/workflows/Node.js%20CI/badge.svg)
-[![XO 代码样式](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/xojs/xo)
+[![Node.js CI 状态](https://img.shields.io/github/actions/workflow/status/vycdev/isometric-contributions-plus/nodejs.yml?label=CI)](https://github.com/vycdev/isometric-contributions-plus/actions/workflows/nodejs.yml) [![MIT 许可证](https://img.shields.io/github/license/vycdev/isometric-contributions-plus)](LICENSE) [![通过 Patreon 支持](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
 
 这是一个为 Chrome / Brave 和 Firefox 而量身打造的浏览器拓展程序，让你能够在 GitHub 用户档案页面的贡献图处，切换显示原生 2D 图与立体像素版贡献图。我们使用了 [obelisk.js](https://github.com/nosir/obelisk.js) 用于绘制立体图像。
 
