@@ -31,7 +31,9 @@ node scripts/submit.js firefox-metadata --dry-run
 node --test scripts/publishing.test.js
 ```
 
-`--check-config` needs no build artifacts. `--dry-run` is offline, checks configuration/artifacts, and never authenticates, uploads, or changes metadata. Firefox submission also checks the built name/add-on ID; run `npm run build:firefox` immediately before submitting Firefox because other builds overwrite `dist/`. `npm run build:all` leaves the Firefox build there. Actual submission commands perform external writes and require a separate, deliberate publishing action.
+`--check-config` needs no build artifacts. Before any upload, all selected packages and the Firefox source identity are checked. `--dry-run` is offline, checks configuration/artifacts, and never authenticates, uploads, or changes metadata. Run `npm run build:firefox` immediately before submitting Firefox because other builds overwrite `dist/`; `npm run build:all` leaves the Firefox build there.
+
+For real Firefox submission or metadata updates, the helper first reads the configured slug through the [AMO detail API](https://mozilla.github.io/addons-server/topics/api/addons.html#detail) and requires its `guid` to match the Plus add-on ID. An unrelated/missing identity or failed lookup stops the operation before any selected store receives an upload. Metadata writes address the immutable Plus ID rather than the mutable slug. These remote checks are skipped for offline dry runs and configuration checks. Actual submission commands perform external writes and require a separate, deliberate publishing action.
 
 After publication, verify each Plus listing's owner and destination before adding its real URL to both READMEs. Do not infer URLs from the product name. First-time store registration and listing metadata are maintainer tasks; these helpers update existing listings.
 

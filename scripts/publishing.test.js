@@ -76,7 +76,13 @@ function fixture(t) {
 
 // Every child gets only dummy publisher values. Any unplanned network/CLI call
 // fails locally, even if the developer has real store credentials configured.
-function runSubmit(dir, args, overrides = {}, intercept = false) {
+function runSubmit(
+  dir,
+  args,
+  overrides = {},
+  intercept = false,
+  listingGuid = FIREFOX_ADDON_ID
+) {
   const env = { ...process.env }
   for (const name of [
     ...Object.keys(browserConfig),
@@ -101,8 +107,8 @@ function runSubmit(dir, args, overrides = {}, intercept = false) {
     syncBuiltinESMExports();
     globalThis.fetch = async (url, options) => {
       if (!${intercept}) throw new Error('Unexpected network request');
-      record({ url, method: options.method, body: JSON.parse(options.body) });
-      return { ok: true, json: async () => ({ name: { 'en-US': ${JSON.stringify(EXTENSION_NAME)} } }) };
+      record({ url, method: options.method, body: options.body ? JSON.parse(options.body) : undefined });
+      return { ok: true, json: async () => ({ guid: ${JSON.stringify(listingGuid)}, name: { 'en-US': ${JSON.stringify(EXTENSION_NAME)} } }) };
     };
   `
   return spawnSync(
@@ -196,6 +202,49 @@ test('configured dry runs and config checks perform no external actions', (t) =>
   assert.equal(fs.existsSync(path.join(dir, 'calls.json')), false)
 })
 
+test('Firefox rejects an unrelated or unidentified listing before any store upload or metadata change', (t) => {
+  const dir = fixture(t)
+  for (const target of ['firefox', 'firefox-metadata', 'all']) {
+    for (const guid of ['unrelated-extension@example.invalid', undefined]) {
+      const result = runSubmit(
+        dir,
+        [target],
+        {},
+        true,
+        guid === undefined ? null : guid
+      )
+      assert.equal(result.status, 1, `${target}: ${result.stdout}`)
+      assert.match(result.stderr, /FIREFOX_ADDON_SLUG.*Plus add-on ID/)
+      const calls = JSON.parse(
+        fs.readFileSync(path.join(dir, 'calls.json'), 'utf8')
+      )
+      assert.equal(calls.length, 1)
+      assert.equal(calls[0].method, 'GET')
+    }
+  }
+})
+
+test('all-store artifact preflight rejects missing packages and stale Firefox identity before external actions', (t) => {
+  const dir = fixture(t)
+  fs.writeFileSync(
+    path.join(dir, 'dist', 'manifest.json'),
+    JSON.stringify({ name: EXTENSION_NAME, manifest_version: 3 })
+  )
+  const stale = runSubmit(dir, ['all'], {}, true)
+  assert.equal(stale.status, 1, stale.stdout)
+  assert.match(stale.stderr, /build:firefox/)
+  assert.equal(fs.existsSync(path.join(dir, 'calls.json')), false)
+  fs.writeFileSync(
+    path.join(dir, 'dist', 'manifest.json'),
+    JSON.stringify(transformForFirefox({ name: EXTENSION_NAME }))
+  )
+  fs.unlinkSync(path.join(dir, 'artifacts', ARTIFACT_NAMES.edge))
+  const missing = runSubmit(dir, ['all'], {}, true)
+  assert.equal(missing.status, 1, missing.stdout)
+  assert.match(missing.stderr, /Artifact not found/)
+  assert.equal(fs.existsSync(path.join(dir, 'calls.json')), false)
+})
+
 test('submission forwards the configured Chrome publisher and Firefox listing', (t) => {
   const dir = fixture(t)
   const chrome = runSubmit(dir, ['chrome'], {}, true)
@@ -215,13 +264,18 @@ test('submission forwards the configured Chrome publisher and Firefox listing', 
   const calls = JSON.parse(
     fs.readFileSync(path.join(dir, 'calls.json'), 'utf8')
   )
-  assert.equal(calls[0].args[0], 'web-ext')
+  assert.equal(calls[0].method, 'GET')
   assert.equal(
-    calls[1].url,
+    calls[0].url,
     'https://addons.mozilla.org/api/v5/addons/addon/plus%2Ftest%20listing/'
   )
-  assert.equal(calls[1].method, 'PATCH')
-  assert.equal(calls[1].body.name['en-US'], EXTENSION_NAME)
+  assert.equal(calls[1].args[0], 'web-ext')
+  assert.equal(
+    calls[2].url,
+    `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(FIREFOX_ADDON_ID)}/`
+  )
+  assert.equal(calls[2].method, 'PATCH')
+  assert.equal(calls[2].body.name['en-US'], EXTENSION_NAME)
 })
 
 test('Safari signing files keep profiles distinct, escape XML, and reject setting injection', (t) => {

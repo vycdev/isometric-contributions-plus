@@ -10,6 +10,7 @@ import {
   ARTIFACT_NAMES,
   assertFirefoxIdentity,
   EXTENSION_NAME,
+  FIREFOX_ADDON_ID,
   requirePublishingConfig
 } from './publishing-config.js'
 
@@ -48,6 +49,21 @@ function checkArtifact(zipName) {
   return zipPath
 }
 
+function checkSubmissionArtifacts(target) {
+  const browsers = target === 'all' ? Object.keys(ARTIFACT_NAMES) : [target]
+  for (const browser of browsers) {
+    if (browser === 'firefox-metadata') continue
+    checkArtifact(ARTIFACT_NAMES[browser])
+    if (browser === 'firefox') {
+      assertFirefoxIdentity(
+        JSON.parse(
+          fs.readFileSync(path.join(rootDir, 'dist', 'manifest.json'), 'utf8')
+        )
+      )
+    }
+  }
+}
+
 function createMozillaJwt(apiKey, apiSecret) {
   const issuedAt = Math.floor(Date.now() / 1000)
   const encode = (value) =>
@@ -68,14 +84,37 @@ function createMozillaJwt(apiKey, apiSecret) {
   return `${unsignedToken}.${signature}`
 }
 
-async function updateFirefoxListingName() {
-  console.log(`Updating Firefox listing name to "${EXTENSION_NAME}"...`)
+async function verifyFirefoxListing() {
   const token = createMozillaJwt(
     process.env.AMO_API_KEY,
     process.env.AMO_API_SECRET
   )
   const response = await fetch(
     `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(process.env.FIREFOX_ADDON_SLUG)}/`,
+    { method: 'GET', headers: { Authorization: `JWT ${token}` } }
+  )
+  if (!response.ok) {
+    throw new Error(
+      `Firefox listing verification failed (${response.status}); check FIREFOX_ADDON_SLUG and AMO credentials. See PUBLISHING.md.`
+    )
+  }
+  const listing = await response.json()
+  if (listing.guid !== FIREFOX_ADDON_ID) {
+    throw new Error(
+      `FIREFOX_ADDON_SLUG does not resolve to the Plus add-on ID (${FIREFOX_ADDON_ID}). Refusing store submission or metadata changes; see PUBLISHING.md.`
+    )
+  }
+}
+
+async function updateFirefoxListingName() {
+  console.log(`Updating Firefox listing name to "${EXTENSION_NAME}"...`)
+  const token = createMozillaJwt(
+    process.env.AMO_API_KEY,
+    process.env.AMO_API_SECRET
+  )
+  // Pin the write to the verified immutable ID, not a mutable listing slug.
+  const response = await fetch(
+    `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(FIREFOX_ADDON_ID)}/`,
     {
       method: 'PATCH',
       headers: {
@@ -114,7 +153,7 @@ async function submitChrome() {
     'CHROME_CLIENT_SECRET',
     'CHROME_REFRESH_TOKEN'
   ])
-  const zipPath = checkArtifact(ARTIFACT_NAMES.chrome)
+  const zipPath = path.join(artifactsDir, ARTIFACT_NAMES.chrome)
 
   if (dryRun) {
     console.log('  Configuration present; credentials have not been verified.')
@@ -155,12 +194,6 @@ async function submitFirefox() {
   console.log('\n=== Firefox Add-ons ===\n')
 
   checkEnvVars(['FIREFOX_ADDON_SLUG', 'AMO_API_KEY', 'AMO_API_SECRET'])
-  checkArtifact(ARTIFACT_NAMES.firefox)
-  assertFirefoxIdentity(
-    JSON.parse(
-      fs.readFileSync(path.join(rootDir, 'dist', 'manifest.json'), 'utf8')
-    )
-  )
 
   if (dryRun) {
     console.log('  Validating credentials...')
@@ -231,7 +264,7 @@ async function submitEdge() {
   console.log('\n=== Microsoft Edge Add-ons ===\n')
 
   checkEnvVars(['EDGE_PRODUCT_ID', 'EDGE_CLIENT_ID', 'EDGE_API_KEY'])
-  const zipPath = checkArtifact(ARTIFACT_NAMES.edge)
+  const zipPath = path.join(artifactsDir, ARTIFACT_NAMES.edge)
 
   if (dryRun) {
     console.log(
@@ -290,19 +323,20 @@ if (dryRun) {
   console.log('🧪 OFFLINE DRY RUN - checking configuration and artifacts\n')
 }
 
-try {
+async function main() {
   requirePublishingConfig(target)
-} catch (error) {
-  console.error(error.message)
-  process.exit(1)
+  if (process.argv.includes('--check-config')) {
+    console.log('Fork publishing configuration is present (not verified).')
+    return
+  }
+  checkSubmissionArtifacts(target)
+  if (!dryRun && ['firefox', 'firefox-metadata', 'all'].includes(target)) {
+    await verifyFirefoxListing()
+  }
+  await handlers[target]()
 }
 
-if (process.argv.includes('--check-config')) {
-  console.log('Fork publishing configuration is present (not verified).')
-  process.exit(0)
-}
-
-handlers[target]().catch((error) => {
+main().catch((error) => {
   console.error('Submission failed:', error.message)
   process.exit(1)
 })
