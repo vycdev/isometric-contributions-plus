@@ -18,6 +18,22 @@
     <main>
       <form>
         <fieldset disabled>
+          <legend>Contribution color</legend>
+          <div class="color-controls">
+            <label for="contribution-color">Base color</label>
+            <input
+              id="contribution-color"
+              type="color"
+              value="#0969da"
+              aria-describedby="color-help"
+            />
+            <output id="color-value" for="contribution-color">#0969da</output>
+          </div>
+          <div id="palette-preview" aria-hidden="true"></div>
+          <p id="color-help">Shades adapt to light and dark themes. Counts stay unchanged.</p>
+          <button id="reset-color" type="button">Reset to blue</button>
+        </fieldset>
+        <fieldset disabled>
           <legend>Height scale</legend>
           <div id="height-scales"></div>
         </fieldset>

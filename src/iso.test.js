@@ -1,6 +1,10 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { fetchExtendedStreakData } from './history.js'
+import {
+  createContributionPalette,
+  DEFAULT_CONTRIBUTION_COLOR
+} from './palette.js'
 
 vi.mock('./history.js', () => ({ fetchExtendedStreakData: vi.fn() }))
 
@@ -13,7 +17,7 @@ const showCalendar = (days) => {
         <table class="js-calendar-graph-table"><tbody><tr>${days
           .map(
             (d, i) =>
-              `<td class="ContributionCalendar-day" data-date="${d.date.toISOString().slice(0, 10)}" data-ix="0" aria-labelledby="tip-${i}" style="fill: rgb(0, 128, 0)"></td>`
+              `<td class="ContributionCalendar-day" data-date="${d.date.toISOString().slice(0, 10)}" data-level="${d.count === 0 ? 0 : Math.min(i + 1, 4)}" data-ix="0" aria-labelledby="tip-${i}" style="fill: rgb(0, 128, 0)"></td>`
           )
           .join('')}</tr></tbody></table>
         ${days.map((d, i) => `<tool-tip id="tip-${i}">${d.count} contributions on a day</tool-tip>`).join('')}
@@ -22,25 +26,44 @@ const showCalendar = (days) => {
 }
 
 let onNavigate
+let onThemeChange
+let onSystemThemeChange
+let systemTheme
 const renderedHeights = []
+const renderedColors = []
 const clearChart = vi.fn(() => {
   renderedHeights.length = 0
+  renderedColors.length = 0
 })
 
 beforeEach(() => {
   vi.resetModules()
   onNavigate = null
+  onThemeChange = null
+  onSystemThemeChange = null
+  delete document.documentElement.dataset.colorMode
   localStorage.clear()
   vi.spyOn(document, 'addEventListener').mockImplementation(
     (name, listener) => {
       if (name === 'turbo:load') onNavigate = listener
     }
   )
-  vi.stubGlobal('matchMedia', () => ({ addEventListener() {} }))
+  systemTheme = {
+    matches: false,
+    addEventListener: (_event, listener) => {
+      onSystemThemeChange = listener
+    }
+  }
+  vi.stubGlobal('matchMedia', () => systemTheme)
   vi.stubGlobal(
     'MutationObserver',
     class {
-      observe() {}
+      constructor(callback) {
+        this.callback = callback
+      }
+      observe(target) {
+        if (target === document.documentElement) onThemeChange = this.callback
+      }
       disconnect() {}
     }
   )
@@ -57,7 +80,8 @@ beforeEach(() => {
       }
     },
     CubeColor: class {
-      getByHorizontalColor() {
+      getByHorizontalColor(color) {
+        renderedColors.push(color)
         return 0
       }
     },
@@ -214,6 +238,116 @@ it('remembers changes made while no chart is present for the next profile', asyn
   showCalendar(outlierCalendar())
   onNavigate()
   expect(renderedHeights).toEqual([3, 40, 103])
+})
+
+const expectPalette = (color, dark = false) => {
+  const palette = createContributionPalette(color, dark)
+  const box = document.querySelector('.js-yearly-contributions')
+  palette.levels.forEach((shade, level) => {
+    expect(box.style.getPropertyValue(`--ic-level-${level}`)).toBe(shade)
+  })
+  expect(box.style.getPropertyValue('--ic-accent')).toBe(palette.accent)
+  expect(renderedColors).toEqual(
+    [0, 2, 3].map((level) =>
+      Number.parseInt(palette.levels[level].slice(1), 16)
+    )
+  )
+}
+
+it.each(
+  ['squares', 'cubes', 'both'].flatMap((view) =>
+    ['linear', 'square-root', 'logarithmic'].map((scale) => [view, scale])
+  )
+)(
+  'updates colors in %s with %s heights without changing any contribution data',
+  async (view, scale) => {
+    const notify = mockChromeStorage({
+      toggleSetting: view,
+      heightScale: scale
+    })
+    showCalendar(outlierCalendar())
+    const originalCalendar =
+      document.querySelector('.js-calendar-graph').innerHTML
+    await import('./iso.js')
+    await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
+    expectPalette(DEFAULT_CONTRIBUTION_COLOR)
+    const originalHeights = [...renderedHeights]
+    const originalStats = document.querySelector(
+      '.ic-contributions-wrapper'
+    ).textContent
+    notify({ contributionColor: { newValue: '#d040a0' } })
+    expectPalette('#d040a0')
+    expect(renderedHeights).toEqual(originalHeights)
+    expect(document.querySelector('.js-calendar-graph').innerHTML).toBe(
+      originalCalendar
+    )
+    expect(
+      document.querySelector('.ic-contributions-wrapper').textContent
+    ).toBe(originalStats)
+    expect(
+      document.querySelector('.js-yearly-contributions').classList
+    ).toContain(`ic-${view}`)
+    notify({ contributionColor: { oldValue: '#d040a0' } })
+    expectPalette(DEFAULT_CONTRIBUTION_COLOR)
+  }
+)
+
+it.each(['localStorage', 'chrome.storage.local'])(
+  'restores the %s color after reloads, profile changes, and year changes',
+  async (storageType) => {
+    if (storageType === 'localStorage') {
+      localStorage.setItem('contributionColor', '#ad3050')
+    } else {
+      mockChromeStorage({ contributionColor: '#ad3050' })
+    }
+    showCalendar(outlierCalendar())
+    await import('./iso.js')
+    await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
+    expectPalette('#ad3050')
+    for (const location of ['/new-profile', '/new-profile?from=2023-01-01']) {
+      window.history.replaceState(null, '', location)
+      showCalendar(outlierCalendar())
+      onNavigate()
+      expectPalette('#ad3050')
+    }
+  }
+)
+
+it('updates an existing chart for GitHub theme changes and system theme changes', async () => {
+  mockChromeStorage({ contributionColor: '#ffff00' })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
+  const heights = [...renderedHeights]
+  const stats = document.querySelector('.ic-contributions-wrapper').textContent
+  document.documentElement.dataset.colorMode = 'dark'
+  onThemeChange()
+  expectPalette('#ffff00', true)
+  document.documentElement.dataset.colorMode = 'light'
+  systemTheme.matches = true
+  onSystemThemeChange()
+  expectPalette('#ffff00', false)
+  document.documentElement.dataset.colorMode = 'auto'
+  onThemeChange()
+  expectPalette('#ffff00', true)
+  expect(renderedHeights).toEqual(heights)
+  expect(document.querySelector('.ic-contributions-wrapper').textContent).toBe(
+    stats
+  )
+})
+
+it('remembers color changes without a chart and ignores invalid or unrelated updates', async () => {
+  const notify = mockChromeStorage()
+  await import('./iso.js')
+  await vi.waitFor(() => expect(onNavigate).toBeTypeOf('function'))
+  notify({ contributionColor: { newValue: '#aa00cc' } })
+  showCalendar(outlierCalendar())
+  onNavigate()
+  expectPalette('#aa00cc')
+  notify({ contributionColor: { newValue: '#ff0000' } }, 'sync')
+  expectPalette('#aa00cc')
+  notify({ contributionColor: { newValue: 'invalid' } })
+  expectPalette(DEFAULT_CONTRIBUTION_COLOR)
 })
 
 it.each(['another profile', 'another year on the same profile'])(

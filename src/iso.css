@@ -15,3 +15,45 @@
 }
 
 /* Both display - no hiding needed, both are visible by default */
+
+/* Scope colors to the contribution area, including GitHub's own legend.
+   Levels remain GitHub's original buckets; only their presentation changes. */
+.ic-themed .ContributionCalendar-day[data-level="0"] {
+  fill: var(--ic-level-0);
+  background-color: var(--ic-level-0);
+}
+
+.ic-themed .ContributionCalendar-day[data-level="1"] {
+  fill: var(--ic-level-1);
+  background-color: var(--ic-level-1);
+}
+
+.ic-themed .ContributionCalendar-day[data-level="2"] {
+  fill: var(--ic-level-2);
+  background-color: var(--ic-level-2);
+}
+
+.ic-themed .ContributionCalendar-day[data-level="3"] {
+  fill: var(--ic-level-3);
+  background-color: var(--ic-level-3);
+}
+
+.ic-themed .ContributionCalendar-day[data-level="4"] {
+  fill: var(--ic-level-4);
+  background-color: var(--ic-level-4);
+}
+
+.ic-themed .color-fg-success,
+.ic-themed .ic-toggle-option.selected {
+  color: var(--ic-accent) !important;
+}
+
+.ic-themed .ic-toggle-option.selected {
+  background-color: var(--ic-selected);
+  border-color: var(--ic-accent);
+}
+
+.ic-themed .ic-toggle-option:focus-visible {
+  outline: 2px solid var(--ic-accent);
+  outline-offset: 2px;
+}

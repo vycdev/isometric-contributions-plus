@@ -1,4 +1,11 @@
 import { fetchExtendedStreakData } from './history.js'
+import {
+  applyContributionPalette,
+  createContributionPalette,
+  DEFAULT_CONTRIBUTION_COLOR,
+  isDarkTheme,
+  normalizeContributionColor
+} from './palette.js'
 import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 import {
   applyViewType,
@@ -56,6 +63,9 @@ let datesCurrent = null
 let dateBest = null
 let toggleSetting = 'cubes'
 let heightScale = 'linear'
+let contributionColor = DEFAULT_CONTRIBUTION_COLOR
+const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)')
+let palette
 let chartGeneration = 0
 let historyRequest = null
 
@@ -99,6 +109,13 @@ const getSettings = async () => {
     'linear'
   )
   heightScale = normalizeHeightScale(savedHeightScale)
+  contributionColor = normalizeContributionColor(
+    await loadSetting(
+      getStorage(),
+      'contributionColor',
+      DEFAULT_CONTRIBUTION_COLOR
+    )
+  )
   return 'Settings loaded'
 }
 
@@ -270,16 +287,27 @@ const setContainerViewType = (type) => {
   applyViewType(contributionsBox, type)
 }
 
-const getSquareColor = (rect) => getElementColor(rect)
+const getSquareColor = (rect) =>
+  palette.levels[Number(rect.dataset.level)]?.slice(1) ?? getElementColor(rect)
+
+const applyTheme = () => {
+  palette = createContributionPalette(
+    contributionColor,
+    isDarkTheme(document.documentElement, colorScheme.matches)
+  )
+  contributionsBox.classList.add('ic-themed')
+  applyContributionPalette(contributionsBox, palette)
+}
 
 const refreshColors = () => {
-  const dayElements = document.querySelectorAll(
+  const dayElements = calendarGraph.querySelectorAll(
     '.js-calendar-graph-table tbody td.ContributionCalendar-day'
   )
+  const byDate = new Map(
+    [...dayElements].map((node) => [node.dataset.date, node])
+  )
   for (const d of days) {
-    const element = [...dayElements].find(
-      (node) => node.dataset.date === d.date.toISOString().split('T')[0]
-    )
+    const element = byDate.get(d.date.toISOString().slice(0, 10))
     if (element) {
       d.color = getSquareColor(element)
     }
@@ -463,6 +491,7 @@ const generateIsometricChart = () => {
   contributionsBox = document.querySelector('.js-yearly-contributions')
 
   resetValues()
+  applyTheme()
   initUI()
   loadStats()
   renderStats()
@@ -502,26 +531,36 @@ const generateIsometricChart = () => {
 
   await getSettings()
 
+  const refreshTheme = () => {
+    if (document.querySelector('.ic-contributions-wrapper')) {
+      applyTheme()
+      refreshColors()
+      renderIsometricChart()
+    }
+  }
+
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== 'local' || !changes.heightScale) return
-      const nextScale = normalizeHeightScale(changes.heightScale.newValue)
-      if (heightScale === nextScale) return
+      if (areaName !== 'local') return
+      const nextScale = changes.heightScale
+        ? normalizeHeightScale(changes.heightScale.newValue)
+        : heightScale
+      const nextColor = changes.contributionColor
+        ? normalizeContributionColor(changes.contributionColor.newValue)
+        : contributionColor
+      if (heightScale === nextScale && contributionColor === nextColor) return
       heightScale = nextScale
-      if (document.querySelector('.ic-contributions-wrapper')) {
-        renderIsometricChart()
-      }
+      contributionColor = nextColor
+      refreshTheme()
     })
   }
 
-  globalThis
-    .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', () => {
-      if (document.querySelector('.ic-contributions-wrapper')) {
-        refreshColors()
-        renderIsometricChart()
-      }
-    })
+  colorScheme.addEventListener('change', refreshTheme)
+  const themeObserver = new MutationObserver(refreshTheme)
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-color-mode', 'data-light-theme', 'data-dark-theme']
+  })
 
   setupObserver()
   document.addEventListener('turbo:load', setupObserver)
@@ -530,7 +569,7 @@ const generateIsometricChart = () => {
       document.visibilityState === 'visible' &&
       document.querySelector('.ic-contributions-wrapper')
     ) {
-      renderIsometricChart()
+      refreshTheme()
     }
   })
 })()

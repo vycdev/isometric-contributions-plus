@@ -21,6 +21,12 @@ Click the extension's toolbar icon to open its settings menu. Under **Height sca
 
 Open GitHub charts update immediately when you change the setting. The selected scale is displayed beside the daily average beneath the contribution statistics. Your choice is saved across profiles, years, and page reloads. All three scales keep inactive days flat and the busiest day at the maximum height. Square-root and logarithmic heights are not proportional to counts. Contribution counts, statistics, and GitHub's square colors stay unchanged.
 
+## Contribution color
+
+Open the extension's toolbar menu and choose a **Contribution color**. Readable intensity shades are derived from that color for light and dark themes. The calendar, its legend, the isometric cubes, contribution statistics, and view controls update together on open GitHub profiles. **Reset to blue** restores the default color (`#0969da`) without changing the height scale.
+
+Your color is saved across profiles, selected years, and reloads. It works in 2D, 3D, and Both modes with every height scale. Colors only change presentation: contribution counts, dates, tooltips, statistics, and GitHub's intensity buckets retain their original values.
+
 ## Installation
 
 ### Chrome/Brave
