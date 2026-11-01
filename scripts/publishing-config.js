@@ -66,7 +66,7 @@ export function assertFirefoxIdentity(manifest) {
     manifest.browser_specific_settings?.gecko?.id !== FIREFOX_ADDON_ID
   ) {
     throw new Error(
-      'Firefox source must use the Plus name and add-on ID. Run "npm run build:firefox" immediately before submitting Firefox; see PUBLISHING.md.'
+      'Firefox source must use the Plus name and add-on ID. Run "pnpm run build:firefox" immediately before submitting Firefox; see PUBLISHING.md.'
     )
   }
 }

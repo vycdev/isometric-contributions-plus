@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { execFileSync, execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { createSafariSigningFiles } from './configure-safari.js'
+import { pnpmCommand } from './pnpm.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -151,14 +152,12 @@ function buildXcode(configuration = 'Debug', signingFiles) {
 }
 
 function buildParcel() {
-  console.log('Running Parcel build...\n')
-  // Firefox packaging transforms dist/manifest.json in place. Clear the output
-  // so a cached Parcel build cannot copy that v2 manifest into Safari.
+  const command = pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json'])
+  // Firefox packaging rewrites the output manifest. Clear it before Parcel
+  // can reuse that cached output for Safari.
   fs.rmSync(distDir, { recursive: true, force: true })
-  execSync('npx parcel build src/manifest.json', {
-    cwd: rootDir,
-    stdio: 'inherit'
-  })
+  console.log('Running Parcel build...\n')
+  execFileSync(...command, { cwd: rootDir, stdio: 'inherit' })
   console.log()
 }
 

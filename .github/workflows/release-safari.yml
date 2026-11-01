@@ -33,11 +33,15 @@ jobs:
         with:
           ref: ${{ inputs.ref || '' }}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Check fork signing and submission configuration
         env:
@@ -60,13 +64,13 @@ jobs:
           done
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build extension and sync resources
-        run: node scripts/build-safari.js --resources-only
+        run: pnpm run build:safari --resources-only
 
       - name: Import signing certificates
         env:

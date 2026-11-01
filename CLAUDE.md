@@ -8,11 +8,14 @@ Isometric Contributions Plus is the independent fork at https://github.com/vycde
 
 ## Commands
 
-- `npm run build` - Build the extension with Parcel
-- `npm run start` - Watch mode for development (serves from localhost)
-- `npm test` - Run Biome checks and Vitest unit tests
-- `npx vitest run` - Run unit tests independently of formatting checks
-- `node --test scripts/publishing.test.js` - Check publishing identity and configuration guards without store requests
+- `pnpm install --frozen-lockfile` - Install with the version pinned in package.json
+- `pnpm run build` - Build the extension with Parcel
+- `pnpm run start` - Watch mode for development (serves from localhost)
+- `pnpm test` - Run Biome, unit tests, and script tooling checks
+- `pnpm run test:unit` - Run unit tests independently of formatting checks
+- `pnpm run test:tooling` - Check pnpm subprocesses and browser build regressions
+- `pnpm run test:publishing` - Check fork publisher identity and configuration guards
+- Run helpers through their `pnpm run` scripts.
 
 ## Code Style
 

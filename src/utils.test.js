@@ -2,12 +2,43 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateStreaks,
   contributionHeight,
+  contributionIntensity,
   datesDayDifference,
   getContributionCount,
   precisionRound,
   rgbToHex,
   sameDay
 } from './utils.js'
+
+describe('contributionIntensity', () => {
+  it('uses the same normalization as heights for the 609/10 example', () => {
+    expect(contributionIntensity(10, 609, 'linear')).toBeCloseTo(0.01642)
+    expect(contributionIntensity(10, 609, 'square-root')).toBeCloseTo(0.12814)
+    expect(contributionIntensity(10, 609, 'logarithmic')).toBeCloseTo(0.37394)
+  })
+
+  it.each(['linear', 'square-root', 'logarithmic'])(
+    '%s preserves endpoints, ordering, and safe bounds',
+    (scale) => {
+      const intensities = Array.from({ length: 610 }, (_, count) =>
+        contributionIntensity(count, 609, scale)
+      )
+      expect(intensities[0]).toBe(0)
+      expect(intensities.at(-1)).toBe(1)
+      expect(
+        intensities.every((value, i) => i === 0 || value >= intensities[i - 1])
+      ).toBe(true)
+      expect(contributionIntensity(700, 609, scale)).toBe(1)
+      expect(contributionIntensity(1, 1, scale)).toBe(1)
+      for (const count of [0, -1, undefined, NaN, Infinity]) {
+        expect(contributionIntensity(count, 609, scale)).toBe(0)
+      }
+      for (const peak of [0, -1, undefined, NaN, Infinity]) {
+        expect(contributionIntensity(1, peak, scale)).toBe(0)
+      }
+    }
+  )
+})
 
 describe('contributionHeight', () => {
   it('keeps linear scaling as the default', () => {
@@ -187,6 +218,9 @@ describe('getContributionCount', () => {
     expect(getContributionCount('15 contributions on March 5th.')).toBe(15)
     expect(getContributionCount('100 contributions on December 25th.')).toBe(
       100
+    )
+    expect(getContributionCount('1,234 contributions on December 25th.')).toBe(
+      1234
     )
   })
 

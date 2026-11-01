@@ -50,6 +50,7 @@ function fixture(t) {
   fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}')
   for (const file of [
     'submit.js',
+    'pnpm.js',
     'publishing-config.js',
     'configure-safari.js'
   ]) {
@@ -91,6 +92,7 @@ function runSubmit(
     delete env[name]
   }
   Object.assign(env, browserConfig, overrides)
+  env.npm_execpath = path.join(dir, 'pnpm.cjs')
   const hook = `
     import cp from 'node:child_process';
     import fs from 'node:fs';
@@ -269,7 +271,7 @@ test('submission forwards the configured Chrome publisher and Firefox listing', 
     calls[0].url,
     'https://addons.mozilla.org/api/v5/addons/addon/plus%2Ftest%20listing/'
   )
-  assert.equal(calls[1].args[0], 'web-ext')
+  assert.ok(calls[1].args.includes('web-ext'))
   assert.equal(
     calls[2].url,
     `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(FIREFOX_ADDON_ID)}/`
@@ -371,7 +373,7 @@ test('Safari resource sync refreshes manifest identity and resolves the copied p
     path.join(dir, 'dist', 'manifest.json'),
     JSON.stringify(transformForFirefox(manifest))
   )
-  const hook = `import cp from 'node:child_process'; import fs from 'node:fs'; import { syncBuiltinESMExports } from 'node:module'; cp.execSync = () => fs.cpSync('parcel-output', 'dist', { recursive: true }); cp.execFileSync = () => { throw new Error('Unexpected Xcode invocation') }; syncBuiltinESMExports();`
+  const hook = `import cp from 'node:child_process'; import fs from 'node:fs'; import { syncBuiltinESMExports } from 'node:module'; cp.execFileSync = (_, args) => { if (!args.includes('parcel')) throw new Error('Unexpected external invocation'); fs.cpSync('parcel-output', 'dist', { recursive: true }); }; syncBuiltinESMExports();`
   const result = spawnSync(
     process.execPath,
     [
@@ -380,7 +382,11 @@ test('Safari resource sync refreshes manifest identity and resolves the copied p
       'scripts/build-safari.js',
       '--resources-only'
     ],
-    { cwd: dir, encoding: 'utf8' }
+    {
+      cwd: dir,
+      env: { ...process.env, npm_execpath: path.join(dir, 'pnpm.cjs') },
+      encoding: 'utf8'
+    }
   )
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(
