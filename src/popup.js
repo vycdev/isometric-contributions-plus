@@ -15,8 +15,10 @@ const status = document.getElementById('save-status')
 const theme = globalThis.matchMedia?.('(prefers-color-scheme: dark)')
 let savedScale = 'linear'
 let savedColor = DEFAULT_CONTRIBUTION_COLOR
-let pendingColor = savedColor
-let savingColor = false
+let currentColor = savedColor
+let colorRequest = 0
+let savedColorRequest = 0
+let latestColorFailed = false
 
 const showColor = (value) => {
   colorInput.value = value
@@ -32,39 +34,39 @@ const showColor = (value) => {
   )
 }
 
-// Keep the native picker usable during writes and coalesce rapid input events.
-const saveColor = () => {
-  if (savingColor || pendingColor === savedColor) return
-  const value = pendingColor
-  savingColor = true
+const chooseColor = (selection) => {
+  const value = normalizeContributionColor(selection)
+  if (value === currentColor && !latestColorFailed) return
+  currentColor = value
+  const request = ++colorRequest
+  latestColorFailed = false
+  showColor(value)
   status.textContent = 'Saving…'
+  // Submit each choice now: a popup can close before an earlier callback runs.
   chrome.storage.local.set({ contributionColor: value }, () => {
-    savingColor = false
-    if (chrome.runtime.lastError) {
-      if (pendingColor === value) {
-        pendingColor = savedColor
-        showColor(savedColor)
-      }
-      status.textContent = 'Could not save this color. Please try again.'
-    } else {
+    const failed = Boolean(chrome.runtime.lastError)
+    if (!failed && request > savedColorRequest) {
       savedColor = value
-      status.textContent = 'Saved for all GitHub profiles.'
+      savedColorRequest = request
     }
-    saveColor()
+    if (request === colorRequest) {
+      latestColorFailed = failed
+      status.textContent = failed
+        ? 'Could not save this color. Please try again.'
+        : 'Saved for all GitHub profiles.'
+    }
+    if (latestColorFailed) {
+      currentColor = savedColor
+      showColor(savedColor)
+    }
   })
-}
-
-const chooseColor = (value) => {
-  pendingColor = normalizeContributionColor(value)
-  showColor(pendingColor)
-  saveColor()
 }
 
 colorInput.addEventListener('input', () => chooseColor(colorInput.value))
 document.getElementById('reset-color').addEventListener('click', () => {
   chooseColor(DEFAULT_CONTRIBUTION_COLOR)
 })
-theme?.addEventListener('change', () => showColor(pendingColor))
+theme?.addEventListener('change', () => showColor(currentColor))
 
 const showSelection = (value) => {
   for (const input of options.querySelectorAll('input')) {
@@ -96,7 +98,7 @@ chrome.storage.local.get(['heightScale', 'contributionColor'], (settings) => {
   }
   savedScale = normalizeHeightScale(settings.heightScale)
   savedColor = normalizeContributionColor(settings.contributionColor)
-  pendingColor = savedColor
+  currentColor = savedColor
   showSelection(savedScale)
   showColor(savedColor)
   for (const group of document.querySelectorAll('fieldset')) {

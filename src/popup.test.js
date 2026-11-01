@@ -131,22 +131,126 @@ it('loads a saved color, saves a new one, and resets only the color to blue', as
   expect(selectedScale()).toBe('square-root')
 })
 
-it('keeps the latest picker input when changes arrive during a pending save', async () => {
+it('submits every changed color before any save callbacks run', async () => {
   await import('./popup.js')
   const callbacks = []
   set.mockImplementation((_settings, callback) => callbacks.push(callback))
   pickColor('#aa0000')
   pickColor('#bb0000')
   pickColor('#cc0000')
-  expect(set).toHaveBeenCalledTimes(1)
-  callbacks.shift()()
+  expect(
+    set.mock.calls.map(([settings]) => settings.contributionColor)
+  ).toEqual(['#aa0000', '#bb0000', '#cc0000'])
   expect(set).toHaveBeenLastCalledWith(
     { contributionColor: '#cc0000' },
     expect.any(Function)
   )
-  callbacks.shift()()
+  callbacks[2]()
+  callbacks[0]()
+  callbacks[1]()
   expect(document.getElementById('contribution-color').value).toBe('#cc0000')
-  expect(set).toHaveBeenCalledTimes(2)
+  expect(set).toHaveBeenCalledTimes(3)
+})
+
+it('submits a blue reset while an earlier color save is still pending', async () => {
+  storedSettings.contributionColor = DEFAULT_CONTRIBUTION_COLOR
+  await import('./popup.js')
+  set.mockImplementation(() => {})
+  pickColor('#aa0000')
+  document.getElementById('reset-color').click()
+  expect(
+    set.mock.calls.map(([settings]) => settings.contributionColor)
+  ).toEqual(['#aa0000', DEFAULT_CONTRIBUTION_COLOR])
+  expect(document.getElementById('contribution-color').value).toBe(
+    DEFAULT_CONTRIBUTION_COLOR
+  )
+})
+
+it.each([false, true])(
+  'ignores a stale callback after the newest save succeeds (error: %s)',
+  async (failed) => {
+    await import('./popup.js')
+    const callbacks = []
+    set.mockImplementation((_settings, callback) => callbacks.push(callback))
+    pickColor('#aa0000')
+    pickColor('#bb0000')
+    callbacks[1]()
+    if (failed) runtime.lastError = { message: 'Earlier save failed' }
+    callbacks[0]()
+    delete runtime.lastError
+    expect(document.getElementById('contribution-color').value).toBe('#bb0000')
+    expect(document.querySelector('[role="status"]').textContent).toContain(
+      'Saved'
+    )
+  }
+)
+
+it.each([false, true])(
+  'restores the last successful color when the newest save fails (failure arrives first: %s)',
+  async (failureFirst) => {
+    storedSettings.contributionColor = '#a020e0'
+    await import('./popup.js')
+    const callbacks = []
+    set.mockImplementation((_settings, callback) => callbacks.push(callback))
+    pickColor('#aa0000')
+    pickColor('#bb0000')
+    if (!failureFirst) callbacks[0]()
+    runtime.lastError = { message: 'Latest save failed' }
+    callbacks[1]()
+    delete runtime.lastError
+    if (failureFirst) callbacks[0]()
+    expect(document.getElementById('contribution-color').value).toBe('#aa0000')
+    expect(document.documentElement.style.getPropertyValue('--ic-accent')).toBe(
+      createContributionPalette('#aa0000').accent
+    )
+    expect(document.querySelector('[role="status"]').textContent).toContain(
+      'Could not save this color'
+    )
+  }
+)
+
+it('keeps a new selection after an error when an older success arrives later', async () => {
+  await import('./popup.js')
+  const callbacks = []
+  set.mockImplementation((_settings, callback) => callbacks.push(callback))
+  pickColor('#aa0000')
+  pickColor('#bb0000')
+  runtime.lastError = { message: 'Save failed' }
+  callbacks[1]()
+  delete runtime.lastError
+  pickColor('#cc0000')
+  callbacks[0]()
+  expect(document.getElementById('contribution-color').value).toBe('#cc0000')
+  callbacks[2]()
+  expect(document.querySelector('[role="status"]').textContent).toContain(
+    'Saved'
+  )
+})
+
+it('retries a failed reset even when blue is already shown as the fallback', async () => {
+  storedSettings.contributionColor = DEFAULT_CONTRIBUTION_COLOR
+  await import('./popup.js')
+  const callbacks = []
+  set.mockImplementation((_settings, callback) => callbacks.push(callback))
+  pickColor('#aa0000')
+  document.getElementById('reset-color').click()
+  runtime.lastError = { message: 'Reset failed' }
+  callbacks[1]()
+  delete runtime.lastError
+  document.getElementById('reset-color').click()
+  expect(set).toHaveBeenCalledTimes(3)
+  expect(set).toHaveBeenLastCalledWith(
+    { contributionColor: DEFAULT_CONTRIBUTION_COLOR },
+    expect.any(Function)
+  )
+  callbacks[2]()
+  callbacks[0]()
+  expect(document.getElementById('contribution-color').value).toBe(
+    DEFAULT_CONTRIBUTION_COLOR
+  )
+  expect(document.querySelector('[role="status"]').textContent).toContain(
+    'Saved'
+  )
 })
 
 it('restores the saved color and preview after a storage error', async () => {

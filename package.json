@@ -16,6 +16,7 @@
     "lint:fix": "biome check --write",
     "test": "biome check && vitest run",
     "test:e2e": "node scripts/test-e2e.js",
+    "test:popup-persistence": "node scripts/test-popup-persistence.js",
     "test:watch": "vitest",
     "version:get": "node scripts/version.js get",
     "version:patch": "node scripts/version.js patch",
