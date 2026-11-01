@@ -22,6 +22,16 @@ const showCalendar = (days) => {
           .join('')}</tr></tbody></table>
         ${days.map((d, i) => `<tool-tip id="tip-${i}">${d.count} contributions on a day</tool-tip>`).join('')}
       </div></div>
+      <div id="user-activity-overview">
+        <svg class="js-activity-overview-graph" aria-label="Contribution types">
+          <path class="js-highlight-blob" d="M 50 48 L 51 50 L 50 53 L 6 50 Z" fill="#40c463" stroke="#40c463" opacity="0.5" />
+          <line class="activity-overview-axis" x1="0" y1="50" x2="100" y2="50" />
+          <line class="activity-overview-axis" x1="50" y1="0" x2="50" y2="100" />
+          <ellipse class="activity-overview-point" cx="6" cy="50" rx="3" ry="3" fill="white" />
+          <text>94% Commits</text><text>3% Pull requests</text>
+          <text>2% Code review</text><text>1% Issues</text>
+        </svg>
+      </div>
     </section></main>`
 }
 
@@ -142,6 +152,9 @@ it.each([
     const originalStats = statValues()
     const originalCalendar =
       document.querySelector('.js-calendar-graph').innerHTML
+    const originalOverview = document.getElementById(
+      'user-activity-overview'
+    ).innerHTML
     expect(document.getElementById('ic-height-scale')).toBeNull()
     expect(canvas.getAttribute('aria-label')).toContain('linear')
     expect(scaleLabel.textContent).toBe('Scale: Linear')
@@ -157,6 +170,9 @@ it.each([
     expect(statValues()).toEqual(originalStats)
     expect(document.querySelector('.js-calendar-graph').innerHTML).toBe(
       originalCalendar
+    )
+    expect(document.getElementById('user-activity-overview').innerHTML).toBe(
+      originalOverview
     )
 
     notify({ heightScale: { newValue: 'linear' } })
@@ -268,6 +284,9 @@ it.each(
     showCalendar(outlierCalendar())
     const originalCalendar =
       document.querySelector('.js-calendar-graph').innerHTML
+    const originalOverview = document.getElementById(
+      'user-activity-overview'
+    ).innerHTML
     await import('./iso.js')
     await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
     expectPalette(DEFAULT_CONTRIBUTION_COLOR)
@@ -277,6 +296,9 @@ it.each(
     ).textContent
     notify({ contributionColor: { newValue: '#d040a0' } })
     expectPalette('#d040a0')
+    expect(document.getElementById('user-activity-overview').innerHTML).toBe(
+      originalOverview
+    )
     expect(renderedHeights).toEqual(originalHeights)
     expect(document.querySelector('.js-calendar-graph').innerHTML).toBe(
       originalCalendar
@@ -289,6 +311,9 @@ it.each(
     ).toContain(`ic-${view}`)
     notify({ contributionColor: { oldValue: '#d040a0' } })
     expectPalette(DEFAULT_CONTRIBUTION_COLOR)
+    expect(document.getElementById('user-activity-overview').innerHTML).toBe(
+      originalOverview
+    )
   }
 )
 
