@@ -24,7 +24,33 @@ on:
           - edge
 
 jobs:
+  validate-publishing-config:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Check fork publisher configuration before release changes
+        env:
+          STORE: ${{ inputs.store }}
+          CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          FIREFOX_ADDON_SLUG: ${{ vars.FIREFOX_ADDON_SLUG }}
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+        run: node scripts/submit.js "$STORE" --check-config
+
   prepare:
+    needs: validate-publishing-config
     if: inputs.store == 'all'
     runs-on: ubuntu-latest
     permissions:
@@ -82,8 +108,8 @@ jobs:
   #   secrets: inherit
 
   release:
-    needs: [prepare]
-    if: always() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
+    needs: [validate-publishing-config, prepare]
+    if: always() && needs.validate-publishing-config.result == 'success' && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -109,6 +135,7 @@ jobs:
       - name: Submit to Chrome Web Store
         if: inputs.store == 'all' || inputs.store == 'chrome'
         env:
+          CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
@@ -118,6 +145,7 @@ jobs:
       - name: Submit to Firefox Add-ons
         if: inputs.store == 'all' || inputs.store == 'firefox'
         env:
+          FIREFOX_ADDON_SLUG: ${{ vars.FIREFOX_ADDON_SLUG }}
           AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
           AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
         run: npm run submit:firefox
@@ -139,6 +167,6 @@ jobs:
           name: v${{ needs.prepare.outputs.version }}
           generate_release_notes: true
           files: |
-            artifacts/isometric-contributions-chrome.zip
-            artifacts/isometric-contributions-edge.zip
-            artifacts/isometric-contributions-firefox.zip
+            artifacts/isometric-contributions-plus-chrome.zip
+            artifacts/isometric-contributions-plus-edge.zip
+            artifacts/isometric-contributions-plus-firefox.zip

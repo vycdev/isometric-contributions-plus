@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Isometric Contributions",
+  "name": "Isometric Contributions Plus",
+  "homepage_url": "https://github.com/vycdev/isometric-contributions-plus",
   "version": "1.2.8",
   "description": "Renders an isometric pixel view of GitHub contribution graphs.",
   "action": {
-    "default_title": "Isometric Contributions settings",
+    "default_title": "Isometric Contributions Plus settings",
     "default_popup": "popup.html",
     "default_icon": {
       "48": "icon-48.png",

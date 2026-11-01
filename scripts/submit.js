@@ -6,15 +6,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  ARTIFACT_NAMES,
+  assertFirefoxIdentity,
+  EXTENSION_NAME,
+  requirePublishingConfig
+} from './publishing-config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const artifactsDir = path.join(rootDir, 'artifacts')
 
 const dryRun = process.argv.includes('--dry-run')
-const EXTENSION_NAME = 'Isometric Contributions'
-const CHROME_PUBLISHER_ID = '5fed62bc-275d-47ee-8e18-802157d2bb1d'
-const FIREFOX_ADDON_SLUG = 'github-isometric-contributions'
 
 function checkEnvVars(vars) {
   const missing = vars.filter((v) => !process.env[v])
@@ -72,7 +75,7 @@ async function updateFirefoxListingName() {
     process.env.AMO_API_SECRET
   )
   const response = await fetch(
-    `https://addons.mozilla.org/api/v5/addons/addon/${FIREFOX_ADDON_SLUG}/`,
+    `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(process.env.FIREFOX_ADDON_SLUG)}/`,
     {
       method: 'PATCH',
       headers: {
@@ -105,36 +108,16 @@ async function submitChrome() {
   console.log('\n=== Chrome Web Store ===\n')
 
   checkEnvVars([
+    'CHROME_PUBLISHER_ID',
     'CHROME_EXTENSION_ID',
     'CHROME_CLIENT_ID',
     'CHROME_CLIENT_SECRET',
     'CHROME_REFRESH_TOKEN'
   ])
-  const zipPath = checkArtifact('isometric-contributions-chrome.zip')
+  const zipPath = checkArtifact(ARTIFACT_NAMES.chrome)
 
   if (dryRun) {
-    console.log('  Validating credentials...')
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: process.env.CHROME_CLIENT_ID,
-        client_secret: process.env.CHROME_CLIENT_SECRET,
-        refresh_token: process.env.CHROME_REFRESH_TOKEN,
-        grant_type: 'refresh_token'
-      })
-    })
-    const tokenData = await tokenResponse.json()
-    if (tokenResponse.ok && tokenData.access_token) {
-      console.log('  ✓ Credentials valid (got access token)')
-    } else {
-      console.error(
-        '  ✗ Invalid credentials:',
-        tokenData.error_description || tokenData.error
-      )
-      process.exit(1)
-    }
-
+    console.log('  Configuration present; credentials have not been verified.')
     console.log('\n  [DRY RUN] Would upload:', zipPath)
     return
   }
@@ -148,7 +131,7 @@ async function submitChrome() {
       env: {
         ...process.env,
         EXTENSION_ID: process.env.CHROME_EXTENSION_ID,
-        PUBLISHER_ID: CHROME_PUBLISHER_ID,
+        PUBLISHER_ID: process.env.CHROME_PUBLISHER_ID,
         CLIENT_ID: process.env.CHROME_CLIENT_ID,
         CLIENT_SECRET: process.env.CHROME_CLIENT_SECRET,
         REFRESH_TOKEN: process.env.CHROME_REFRESH_TOKEN
@@ -171,8 +154,13 @@ async function submitChrome() {
 async function submitFirefox() {
   console.log('\n=== Firefox Add-ons ===\n')
 
-  checkEnvVars(['AMO_API_KEY', 'AMO_API_SECRET'])
-  checkArtifact('isometric-contributions-firefox.zip')
+  checkEnvVars(['FIREFOX_ADDON_SLUG', 'AMO_API_KEY', 'AMO_API_SECRET'])
+  checkArtifact(ARTIFACT_NAMES.firefox)
+  assertFirefoxIdentity(
+    JSON.parse(
+      fs.readFileSync(path.join(rootDir, 'dist', 'manifest.json'), 'utf8')
+    )
+  )
 
   if (dryRun) {
     console.log('  Validating credentials...')
@@ -228,7 +216,7 @@ async function submitFirefox() {
 
 async function updateFirefoxMetadata() {
   console.log('\n=== Firefox Add-ons Metadata ===\n')
-  checkEnvVars(['AMO_API_KEY', 'AMO_API_SECRET'])
+  checkEnvVars(['FIREFOX_ADDON_SLUG', 'AMO_API_KEY', 'AMO_API_SECRET'])
 
   if (dryRun) {
     console.log(`  [DRY RUN] Would set listing name to "${EXTENSION_NAME}"`)
@@ -243,7 +231,7 @@ async function submitEdge() {
   console.log('\n=== Microsoft Edge Add-ons ===\n')
 
   checkEnvVars(['EDGE_PRODUCT_ID', 'EDGE_CLIENT_ID', 'EDGE_API_KEY'])
-  const zipPath = checkArtifact('isometric-contributions-edge.zip')
+  const zipPath = checkArtifact(ARTIFACT_NAMES.edge)
 
   if (dryRun) {
     console.log(
@@ -277,7 +265,7 @@ const target = process.argv.slice(2).find((a) => !a.startsWith('--'))
 
 if (!target) {
   console.error(
-    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run]'
+    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run|--check-config]'
   )
   process.exit(1)
 }
@@ -293,13 +281,25 @@ const handlers = {
 if (!handlers[target]) {
   console.error(`Unknown target: ${target}`)
   console.error(
-    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run]'
+    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run|--check-config]'
   )
   process.exit(1)
 }
 
 if (dryRun) {
-  console.log('🧪 DRY RUN MODE - validating without publishing\n')
+  console.log('🧪 OFFLINE DRY RUN - checking configuration and artifacts\n')
+}
+
+try {
+  requirePublishingConfig(target)
+} catch (error) {
+  console.error(error.message)
+  process.exit(1)
+}
+
+if (process.argv.includes('--check-config')) {
+  console.log('Fork publishing configuration is present (not verified).')
+  process.exit(0)
 }
 
 handlers[target]().catch((error) => {

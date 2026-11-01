@@ -9,7 +9,7 @@ import Cocoa
 import SafariServices
 import WebKit
 
-let extensionBundleIdentifier = "me.jasonlong.isometric-contribution.Extension"
+let extensionBundleIdentifier = "io.github.vycdev.isometric-contributions-plus.Extension"
 
 class ViewController: NSViewController, WKNavigationDelegate, WKScriptMessageHandler {
 

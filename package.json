@@ -1,4 +1,15 @@
 {
+  "name": "isometric-contributions-plus",
+  "private": true,
+  "description": "Isometric Contributions Plus browser extension",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vycdev/isometric-contributions-plus.git"
+  },
+  "homepage": "https://github.com/vycdev/isometric-contributions-plus",
+  "bugs": {
+    "url": "https://github.com/vycdev/isometric-contributions-plus/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.0"
@@ -15,6 +26,7 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "test": "biome check && vitest run",
+    "test:publishing": "node --test scripts/publishing.test.js",
     "test:e2e": "node scripts/test-e2e.js",
     "test:watch": "vitest",
     "version:get": "node scripts/version.js get",

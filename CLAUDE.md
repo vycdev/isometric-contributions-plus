@@ -4,17 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Isometric Contributions is a browser extension (Chrome/Brave, Firefox, Edge) that renders GitHub contribution graphs as isometric 3D pixel art using obelisk.js. Users can toggle between the standard 2D view and the isometric 3D view.
+Isometric Contributions Plus is the independent fork at https://github.com/vycdev/isometric-contributions-plus. It is a browser extension (Chrome/Brave, Firefox, Edge, Safari) that renders GitHub contribution graphs as isometric 3D pixel art using obelisk.js. Users can toggle between the standard 2D view and the isometric 3D view. Preserve upstream copyright and dependency notices; direct support and publishing configuration to this fork. See PUBLISHING.md for unconfigured store accounts and private reporting contact.
 
 ## Commands
 
 - `npm run build` - Build the extension with Parcel
 - `npm run start` - Watch mode for development (serves from localhost)
-- `npm test` - Run XO linter
+- `npm test` - Run Biome checks and Vitest unit tests
+- `npx vitest run` - Run unit tests independently of formatting checks
+- `node --test scripts/publishing.test.js` - Check publishing identity and configuration guards without store requests
 
 ## Code Style
 
-Uses XO linter with Prettier enabled:
+Uses Biome:
 - No semicolons
 - 2-space indentation
 - ES modules (`"type": "module"` in package.json)

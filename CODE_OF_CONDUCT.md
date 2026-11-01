@@ -59,8 +59,14 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-jason@jasonlong.me.
+reported to the fork maintainer, [@vycdev](https://github.com/vycdev), through
+[this repository's issues](https://github.com/vycdev/isometric-contributions-plus/issues)
+when the report is suitable for public disclosure. Issues are public: do not post
+sensitive details, personal information, or private evidence there. This fork
+does not yet have a private reporting address. Establishing one is a pending
+maintainer decision tracked in [PUBLISHING.md](PUBLISHING.md#support-and-private-reporting).
+Until it is announced, a public issue may request a private reporting channel
+without including incident details. Do not send fork reports to the upstream maintainer.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

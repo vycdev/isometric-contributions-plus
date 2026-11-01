@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { createSafariSigningFiles } from './configure-safari.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -39,6 +40,7 @@ function syncResources() {
   )
   const assets = new Set([
     ...Object.values(manifest.icons || {}),
+    ...Object.values(manifest.action?.default_icon || {}),
     ...(manifest.content_scripts || []).flatMap((script) => [
       ...(script.js || []),
       ...(script.css || [])
@@ -63,9 +65,12 @@ function syncResources() {
       const ext = f.slice(f.lastIndexOf('.'))
       return hashedName.startsWith(base) && hashedName.endsWith(ext)
     })
-    if (original) {
-      hashToOriginal.set(hashedName, original)
+    if (!original) {
+      throw new Error(
+        `No Safari resource mapping for ${hashedName}; update SOURCE_FILES.`
+      )
     }
+    hashToOriginal.set(hashedName, original)
   }
 
   // Copy each built file to Resources with its original name
@@ -80,42 +85,66 @@ function syncResources() {
             .replaceAll(`/${hashedName}`, originalName)
             .replaceAll(hashedName, originalName)
         }
+        if (original === 'obelisk.min.js') {
+          const source = fs.readFileSync(
+            path.join(rootDir, 'src', original),
+            'utf8'
+          )
+          const license = source.match(/^\/\*![\s\S]*?\*\//)?.[0]
+          if (license) content = `${license}\n${content}`
+        }
+        if (original.endsWith('.html')) content = `${content.trimEnd()}\n`
         fs.writeFileSync(dest, content)
       } else {
         fs.copyFileSync(src, dest)
       }
       console.log(`  ${hashed} -> ${original}`)
     } else {
-      console.error(`  WARNING: ${src} not found`)
+      throw new Error(`Required Safari resource not found: ${src}`)
     }
   }
+
+  // Keep the copied manifest aligned with the source identity and unhashed
+  // Safari resource names, including the toolbar popup and homepage.
+  let safariManifest = JSON.stringify(manifest, null, 2)
+  for (const [hashed, original] of hashToOriginal) {
+    safariManifest = safariManifest.replaceAll(hashed, original)
+  }
+  fs.writeFileSync(
+    path.join(resourcesDir, 'manifest.json'),
+    `${safariManifest}\n`
+  )
 
   console.log('Resources synced.\n')
 }
 
-function buildXcode(configuration = 'Debug') {
+function buildXcode(configuration = 'Debug', signingFiles) {
   console.log(`Building Xcode project (${configuration})...\n`)
 
-  const cmd = [
-    'xcodebuild build',
-    `-project "${xcodeproj}"`,
-    '-scheme "Isometric Contributions"',
-    `-configuration ${configuration}`,
-    "-destination 'platform=macOS'",
-    `-derivedDataPath "${derivedDataDir}"`
+  const args = [
+    'build',
+    '-project',
+    xcodeproj,
+    '-scheme',
+    'Isometric Contributions',
+    '-configuration',
+    configuration,
+    '-destination',
+    'platform=macOS',
+    '-derivedDataPath',
+    derivedDataDir
   ]
 
   // For Release builds in CI, allow signing overrides via env vars
-  if (configuration === 'Release' && process.env.APPLE_SIGNING_IDENTITY) {
-    cmd.push(
-      'CODE_SIGN_STYLE=Manual',
-      `CODE_SIGN_IDENTITY="${process.env.APPLE_SIGNING_IDENTITY}"`,
-      `DEVELOPMENT_TEAM="${process.env.APPLE_TEAM_ID}"`,
-      'OTHER_CODE_SIGN_FLAGS="--timestamp"'
+  if (signingFiles) {
+    args.push(
+      '-xcconfig',
+      signingFiles.xcconfigPath,
+      'OTHER_CODE_SIGN_FLAGS=--timestamp'
     )
   }
 
-  execSync(cmd.join(' \\\n  '), {
+  execFileSync('xcodebuild', args, {
     cwd: safariDir,
     stdio: 'inherit'
   })
@@ -123,6 +152,9 @@ function buildXcode(configuration = 'Debug') {
 
 function buildParcel() {
   console.log('Running Parcel build...\n')
+  // Firefox packaging transforms dist/manifest.json in place. Clear the output
+  // so a cached Parcel build cannot copy that v2 manifest into Safari.
+  fs.rmSync(distDir, { recursive: true, force: true })
   execSync('npx parcel build src/manifest.json', {
     cwd: rootDir,
     stdio: 'inherit'
@@ -132,19 +164,29 @@ function buildParcel() {
 
 const configuration = process.argv.includes('--release') ? 'Release' : 'Debug'
 const skipXcode = process.argv.includes('--resources-only')
+// Refuse an unconfigured signed build before running other build steps.
+let signingFiles
+if (configuration === 'Release' && !skipXcode) {
+  try {
+    signingFiles = createSafariSigningFiles()
+  } catch (error) {
+    console.error(error.message)
+    process.exit(1)
+  }
+}
 
 buildParcel()
 syncResources()
 
 if (!skipXcode) {
-  buildXcode(configuration)
+  buildXcode(configuration, signingFiles)
 
   const appPath = path.join(
     derivedDataDir,
     'Build',
     'Products',
     configuration,
-    'Isometric Contributions.app'
+    'Isometric Contributions Plus.app'
   )
   if (fs.existsSync(appPath)) {
     console.log(`\nBuild succeeded: ${appPath}`)
