@@ -371,4 +371,19 @@ describe('parseCalendarGraph', () => {
       parseCalendarGraph([element], [tooltip], () => 'ffffff')[0].count
     ).toBe(609)
   })
+
+  it.each(['', 'Loading...'])(
+    'distinguishes an unavailable count (%s) from an inactive day',
+    (text) => {
+      const elements = [createDayElement('2024-01-01', '0', 'tip')]
+      const tooltips = [createTooltipElement('tip', text)]
+      expect(
+        parseCalendarGraph(elements, tooltips, () => 'ffffff')[0].count
+      ).toBeNull()
+      tooltips[0].textContent = 'No contributions on January 1st.'
+      expect(
+        parseCalendarGraph(elements, tooltips, () => 'ffffff')[0].count
+      ).toBe(0)
+    }
+  )
 })

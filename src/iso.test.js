@@ -6,6 +6,9 @@ import { contributionIntensity } from './utils.js'
 
 vi.mock('./history.js', () => ({ fetchExtendedStreakData: vi.fn() }))
 
+const NativeMutationObserver = globalThis.MutationObserver
+const nativeObservers = []
+
 const day = (date, count = 1) => ({ date: new Date(date), count })
 const showCalendar = (days) => {
   document.body.innerHTML = `
@@ -33,6 +36,7 @@ const showCalendar = (days) => {
 let onNavigate
 let onThemeChange
 let onColorSchemeChange
+let onCalendarChange
 const renderedHeights = []
 const renderedColors = []
 const clearChart = vi.fn(() => {
@@ -62,6 +66,7 @@ beforeEach(() => {
       }
       observe(target) {
         if (target === document.documentElement) onThemeChange = this.callback
+        else onCalendarChange = this.callback
       }
       disconnect() {}
     }
@@ -90,6 +95,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  for (const observer of nativeObservers.splice(0)) observer.disconnect()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   vi.clearAllMocks()
@@ -336,6 +342,65 @@ it('can reinitialize the same calendar without sampling scaled 2D colors for 3D'
   expect(calendarColors()).toEqual(expectedColors('logarithmic'))
   expect(document.querySelectorAll('#ic-calendar-scale-label')).toHaveLength(1)
 })
+
+it.each(['missing', 'loading'])(
+  'waits for exact counts before scaling a calendar with a %s tooltip',
+  async (state) => {
+    mockChromeStorage({ heightScale: 'square-root' })
+    showCalendar(outlierCalendar())
+    const tooltip = document.getElementById('tip-1')
+    if (state === 'missing') tooltip.remove()
+    else tooltip.textContent = 'Loading...'
+    await import('./iso.js')
+    await vi.waitFor(() => expect(onNavigate).toBeTypeOf('function'))
+    expect(document.querySelector('.ic-contributions-wrapper')).toBeNull()
+    expect(
+      document.querySelector('.js-calendar-graph').classList
+    ).not.toContain('ic-calendar-scaled')
+
+    tooltip.textContent = '10 contributions on January 2nd.'
+    if (state === 'missing')
+      document.querySelector('.js-calendar-graph').append(tooltip)
+    onCalendarChange()
+    expect(calendarColors()).toEqual(expectedColors('square-root'))
+    expect(
+      document.querySelector('.ic-contributions-wrapper .f2').textContent
+    ).toBe('619')
+  }
+)
+
+it.each(['text', 'association'])(
+  'initializes through real DOM observations after delayed tooltip %s hydration',
+  async (hydration) => {
+    vi.stubGlobal(
+      'MutationObserver',
+      class extends NativeMutationObserver {
+        constructor(callback) {
+          super(callback)
+          nativeObservers.push(this)
+        }
+      }
+    )
+    mockChromeStorage({ heightScale: 'logarithmic' })
+    showCalendar(outlierCalendar())
+    const tooltip = document.getElementById('tip-1')
+    const element = document.querySelector('[data-date="2024-01-02"]')
+    if (hydration === 'text') tooltip.textContent = 'Loading...'
+    else element.removeAttribute('aria-labelledby')
+    await import('./iso.js')
+    await vi.waitFor(() => expect(onNavigate).toBeTypeOf('function'))
+    expect(document.querySelector('.ic-contributions-wrapper')).toBeNull()
+    if (hydration === 'text')
+      tooltip.firstChild.data = '10 contributions on January 2nd.'
+    else element.setAttribute('aria-labelledby', tooltip.id)
+    await vi.waitFor(() =>
+      expect(calendarColors()).toEqual(expectedColors('logarithmic'))
+    )
+    // The renderer's own legend, style, and accessibility mutations must settle.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(clearChart).toHaveBeenCalledTimes(1)
+  }
+)
 
 it('falls back to linear for an unrecognized stored height scale', async () => {
   localStorage.setItem('heightScale', 'unknown')

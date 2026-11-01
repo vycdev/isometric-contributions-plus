@@ -97,12 +97,13 @@ export const sameDay = (d1, d2) => d1.toDateString() === d2.toDateString()
  * - "1 contribution on January 10th."
  * - "2 contributions on August 31st."
  * @param {string} text - The tooltip text content
- * @returns {number} The contribution count (0 if no match or "No contributions")
+ * @param {number|null} missingCount - Value for unavailable counts (defaults to 0)
+ * @returns {number|null} The contribution count, or missingCount if no match
  */
-export const getContributionCount = (text) => {
+export const getContributionCount = (text, missingCount = 0) => {
   const contributionMatches = text.match(/([\d,]+|No) contributions? on/)
   if (!contributionMatches) {
-    return 0
+    return missingCount
   }
 
   return contributionMatches[1] === 'No'
@@ -257,7 +258,7 @@ export const parseCalendarGraph = (
   const tooltipNodes = [...tooltipElements].map((t) => ({
     tid: t.id,
     target: t.getAttribute('for'),
-    count: getContributionCount(t.textContent)
+    count: getContributionCount(t.textContent, null)
   }))
 
   const data = dayNodes.map((d) => ({
