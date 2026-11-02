@@ -4,11 +4,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { ARTIFACT_NAMES, requirePublishingConfig } from './publishing-config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const artifactsDir = path.join(rootDir, 'artifacts')
-const zipPath = path.join(artifactsDir, 'isometric-contributions-edge.zip')
+const zipPath = path.join(artifactsDir, ARTIFACT_NAMES.edge)
 
 const API_BASE = 'https://api.addons.microsoftedge.microsoft.com/v1'
 
@@ -69,6 +70,7 @@ async function cancelPendingSubmission(productId, headers) {
 }
 
 async function main() {
+  requirePublishingConfig('edge')
   const { EDGE_PRODUCT_ID, EDGE_CLIENT_ID, EDGE_API_KEY } = process.env
 
   if (!EDGE_PRODUCT_ID || !EDGE_CLIENT_ID || !EDGE_API_KEY) {
@@ -79,7 +81,7 @@ async function main() {
 
   if (!fs.existsSync(zipPath)) {
     console.error(`Artifact not found: ${zipPath}`)
-    console.error('Run "npm run build:edge" first')
+    console.error('Run "pnpm run build:edge" first')
     process.exit(1)
   }
 

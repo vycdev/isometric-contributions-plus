@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { pnpmCommand } from './pnpm.js'
+import { ARTIFACT_NAMES, transformForFirefox } from './publishing-config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const distDir = path.join(rootDir, 'dist')
 const artifactsDir = path.join(rootDir, 'artifacts')
 
-const FIREFOX_ADDON_ID = 'isometric-contributions@jasonlong.me'
-
-const browsers = {
-  chrome: { zipName: 'isometric-contributions-chrome.zip' },
-  edge: { zipName: 'isometric-contributions-edge.zip' },
-  firefox: { zipName: 'isometric-contributions-firefox.zip' }
-}
+const browsers = Object.fromEntries(
+  Object.entries(ARTIFACT_NAMES).map(([browser, zipName]) => [
+    browser,
+    { zipName }
+  ])
+)
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -33,28 +34,6 @@ function cleanDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
 }
 
-function transformForFirefox(manifest) {
-  const v2 = { ...manifest }
-
-  // Change to manifest v2
-  // eslint-disable-next-line camelcase
-  v2.manifest_version = 2
-
-  // Move host_permissions into permissions (v2 doesn't have host_permissions)
-  if (v2.host_permissions) {
-    v2.permissions = [...(v2.permissions || []), ...v2.host_permissions]
-    delete v2.host_permissions
-  }
-
-  // Add Firefox-specific settings
-  // eslint-disable-next-line camelcase
-  v2.browser_specific_settings = {
-    gecko: { id: FIREFOX_ADDON_ID }
-  }
-
-  return v2
-}
-
 function writeDistManifest(manifest) {
   const distManifestPath = path.join(distDir, 'manifest.json')
   fs.writeFileSync(distManifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
@@ -62,10 +41,13 @@ function writeDistManifest(manifest) {
 
 function runParcelBuild() {
   console.log('Running Parcel build...')
-  execSync('npx parcel build src/manifest.json', {
-    cwd: rootDir,
-    stdio: 'inherit'
-  })
+  execFileSync(
+    ...pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json']),
+    {
+      cwd: rootDir,
+      stdio: 'inherit'
+    }
+  )
 }
 
 function createZip(browser) {
@@ -77,10 +59,20 @@ function createZip(browser) {
   }
 
   console.log(`Creating ${config.zipName}...`)
-  execSync(`zip -r "${zipPath}" .`, {
-    cwd: distDir,
-    stdio: 'inherit'
-  })
+  execFileSync(
+    ...pnpmCommand([
+      'exec',
+      'web-ext',
+      'build',
+      '--source-dir',
+      distDir,
+      '--artifacts-dir',
+      artifactsDir,
+      '--filename',
+      config.zipName
+    ]),
+    { cwd: rootDir, stdio: 'inherit' }
+  )
 
   const stats = fs.statSync(zipPath)
   console.log(
@@ -89,6 +81,8 @@ function createZip(browser) {
 }
 
 function build(browser) {
+  // Validate the launcher before deleting an existing build.
+  pnpmCommand([])
   console.log(`\n=== Building for ${browser} ===\n`)
 
   cleanDir(distDir)
@@ -132,7 +126,7 @@ function buildAll() {
 const target = process.argv[2]
 
 if (!target) {
-  console.error('Usage: node scripts/build.js <chrome|edge|firefox|all>')
+  console.error('Usage: pnpm run build:<chrome|edge|firefox|all>')
   process.exit(1)
 }
 
@@ -142,6 +136,6 @@ if (target === 'all') {
   build(target)
 } else {
   console.error(`Unknown target: ${target}`)
-  console.error('Usage: node scripts/build.js <chrome|edge|firefox|all>')
+  console.error('Usage: pnpm run build:<chrome|edge|firefox|all>')
   process.exit(1)
 }

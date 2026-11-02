@@ -6,15 +6,46 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { parseArgs } from 'node:util'
+import { pnpmCommand } from './pnpm.js'
+import {
+  ARTIFACT_NAMES,
+  assertFirefoxIdentity,
+  EXTENSION_NAME,
+  FIREFOX_ADDON_ID,
+  requirePublishingConfig
+} from './publishing-config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const artifactsDir = path.join(rootDir, 'artifacts')
 
-const dryRun = process.argv.includes('--dry-run')
-const EXTENSION_NAME = 'Isometric Contributions'
-const CHROME_PUBLISHER_ID = '5fed62bc-275d-47ee-8e18-802157d2bb1d'
-const FIREFOX_ADDON_SLUG = 'github-isometric-contributions'
+const usage =
+  'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run|--check-config|--preflight]'
+let args
+try {
+  args = parseArgs({
+    options: {
+      'dry-run': { type: 'boolean' },
+      'check-config': { type: 'boolean' },
+      preflight: { type: 'boolean' }
+    },
+    allowPositionals: true
+  })
+} catch (error) {
+  console.error(error.message)
+  console.error(usage)
+  process.exit(1)
+}
+if (
+  args.positionals.length !== 1 ||
+  Object.values(args.values).filter(Boolean).length > 1
+) {
+  console.error(usage)
+  process.exit(1)
+}
+const target = args.positionals[0]
+const dryRun = Boolean(args.values['dry-run'])
 
 function checkEnvVars(vars) {
   const missing = vars.filter((v) => !process.env[v])
@@ -34,7 +65,7 @@ function checkArtifact(zipName) {
   const zipPath = path.join(artifactsDir, zipName)
   if (!fs.existsSync(zipPath)) {
     console.error(`Artifact not found: ${zipPath}`)
-    console.error('Run "npm run build:all" first')
+    console.error('Run "pnpm run build:all" first')
     process.exit(1)
   }
 
@@ -43,6 +74,21 @@ function checkArtifact(zipName) {
   }
 
   return zipPath
+}
+
+function checkSubmissionArtifacts(target) {
+  const browsers = target === 'all' ? Object.keys(ARTIFACT_NAMES) : [target]
+  for (const browser of browsers) {
+    if (browser === 'firefox-metadata') continue
+    checkArtifact(ARTIFACT_NAMES[browser])
+    if (browser === 'firefox') {
+      assertFirefoxIdentity(
+        JSON.parse(
+          fs.readFileSync(path.join(rootDir, 'dist', 'manifest.json'), 'utf8')
+        )
+      )
+    }
+  }
 }
 
 function createMozillaJwt(apiKey, apiSecret) {
@@ -65,14 +111,37 @@ function createMozillaJwt(apiKey, apiSecret) {
   return `${unsignedToken}.${signature}`
 }
 
+async function verifyFirefoxListing() {
+  const token = createMozillaJwt(
+    process.env.AMO_API_KEY,
+    process.env.AMO_API_SECRET
+  )
+  const response = await fetch(
+    `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(process.env.FIREFOX_ADDON_SLUG)}/`,
+    { method: 'GET', headers: { Authorization: `JWT ${token}` } }
+  )
+  if (!response.ok) {
+    throw new Error(
+      `Firefox listing verification failed (${response.status}); check FIREFOX_ADDON_SLUG and AMO credentials. See PUBLISHING.md.`
+    )
+  }
+  const listing = await response.json()
+  if (listing.guid !== FIREFOX_ADDON_ID) {
+    throw new Error(
+      `FIREFOX_ADDON_SLUG does not resolve to the Plus add-on ID (${FIREFOX_ADDON_ID}). Refusing store submission or metadata changes; see PUBLISHING.md.`
+    )
+  }
+}
+
 async function updateFirefoxListingName() {
   console.log(`Updating Firefox listing name to "${EXTENSION_NAME}"...`)
   const token = createMozillaJwt(
     process.env.AMO_API_KEY,
     process.env.AMO_API_SECRET
   )
+  // Pin the write to the verified immutable ID, not a mutable listing slug.
   const response = await fetch(
-    `https://addons.mozilla.org/api/v5/addons/addon/${FIREFOX_ADDON_SLUG}/`,
+    `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(FIREFOX_ADDON_ID)}/`,
     {
       method: 'PATCH',
       headers: {
@@ -105,50 +174,30 @@ async function submitChrome() {
   console.log('\n=== Chrome Web Store ===\n')
 
   checkEnvVars([
+    'CHROME_PUBLISHER_ID',
     'CHROME_EXTENSION_ID',
     'CHROME_CLIENT_ID',
     'CHROME_CLIENT_SECRET',
     'CHROME_REFRESH_TOKEN'
   ])
-  const zipPath = checkArtifact('isometric-contributions-chrome.zip')
+  const zipPath = path.join(artifactsDir, ARTIFACT_NAMES.chrome)
 
   if (dryRun) {
-    console.log('  Validating credentials...')
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: process.env.CHROME_CLIENT_ID,
-        client_secret: process.env.CHROME_CLIENT_SECRET,
-        refresh_token: process.env.CHROME_REFRESH_TOKEN,
-        grant_type: 'refresh_token'
-      })
-    })
-    const tokenData = await tokenResponse.json()
-    if (tokenResponse.ok && tokenData.access_token) {
-      console.log('  ✓ Credentials valid (got access token)')
-    } else {
-      console.error(
-        '  ✗ Invalid credentials:',
-        tokenData.error_description || tokenData.error
-      )
-      process.exit(1)
-    }
-
+    console.log('  Configuration present; credentials have not been verified.')
     console.log('\n  [DRY RUN] Would upload:', zipPath)
     return
   }
 
-  const args = ['chrome-webstore-upload-cli', '--source', zipPath]
+  const args = ['chrome-webstore-upload', '--source', zipPath]
 
   try {
-    execFileSync('npx', args, {
+    execFileSync(...pnpmCommand(['exec', ...args]), {
       cwd: rootDir,
       stdio: 'inherit',
       env: {
         ...process.env,
         EXTENSION_ID: process.env.CHROME_EXTENSION_ID,
-        PUBLISHER_ID: CHROME_PUBLISHER_ID,
+        PUBLISHER_ID: process.env.CHROME_PUBLISHER_ID,
         CLIENT_ID: process.env.CHROME_CLIENT_ID,
         CLIENT_SECRET: process.env.CHROME_CLIENT_SECRET,
         REFRESH_TOKEN: process.env.CHROME_REFRESH_TOKEN
@@ -171,8 +220,7 @@ async function submitChrome() {
 async function submitFirefox() {
   console.log('\n=== Firefox Add-ons ===\n')
 
-  checkEnvVars(['AMO_API_KEY', 'AMO_API_SECRET'])
-  checkArtifact('isometric-contributions-firefox.zip')
+  checkEnvVars(['FIREFOX_ADDON_SLUG', 'AMO_API_KEY', 'AMO_API_SECRET'])
 
   if (dryRun) {
     console.log('  Validating credentials...')
@@ -203,7 +251,7 @@ async function submitFirefox() {
   ]
 
   try {
-    execFileSync('npx', args, {
+    execFileSync(...pnpmCommand(['exec', ...args]), {
       cwd: rootDir,
       stdio: 'inherit',
       env: {
@@ -228,7 +276,7 @@ async function submitFirefox() {
 
 async function updateFirefoxMetadata() {
   console.log('\n=== Firefox Add-ons Metadata ===\n')
-  checkEnvVars(['AMO_API_KEY', 'AMO_API_SECRET'])
+  checkEnvVars(['FIREFOX_ADDON_SLUG', 'AMO_API_KEY', 'AMO_API_SECRET'])
 
   if (dryRun) {
     console.log(`  [DRY RUN] Would set listing name to "${EXTENSION_NAME}"`)
@@ -243,7 +291,7 @@ async function submitEdge() {
   console.log('\n=== Microsoft Edge Add-ons ===\n')
 
   checkEnvVars(['EDGE_PRODUCT_ID', 'EDGE_CLIENT_ID', 'EDGE_API_KEY'])
-  const zipPath = checkArtifact('isometric-contributions-edge.zip')
+  const zipPath = path.join(artifactsDir, ARTIFACT_NAMES.edge)
 
   if (dryRun) {
     console.log(
@@ -273,15 +321,6 @@ async function submitAll() {
   }
 }
 
-const target = process.argv.slice(2).find((a) => !a.startsWith('--'))
-
-if (!target) {
-  console.error(
-    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run]'
-  )
-  process.exit(1)
-}
-
 const handlers = {
   chrome: submitChrome,
   firefox: submitFirefox,
@@ -290,19 +329,36 @@ const handlers = {
   all: submitAll
 }
 
-if (!handlers[target]) {
+if (!Object.hasOwn(handlers, target)) {
   console.error(`Unknown target: ${target}`)
-  console.error(
-    'Usage: node scripts/submit.js <chrome|firefox|firefox-metadata|edge|all> [--dry-run]'
-  )
+  console.error(usage)
   process.exit(1)
 }
 
 if (dryRun) {
-  console.log('🧪 DRY RUN MODE - validating without publishing\n')
+  console.log('🧪 OFFLINE DRY RUN - checking configuration and artifacts\n')
 }
 
-handlers[target]().catch((error) => {
+async function main() {
+  requirePublishingConfig(target)
+  if (args.values['check-config']) {
+    console.log('Fork publishing configuration is present (not verified).')
+    return
+  }
+  checkSubmissionArtifacts(target)
+  if (!dryRun && ['firefox', 'firefox-metadata', 'all'].includes(target)) {
+    await verifyFirefoxListing()
+  }
+  if (args.values.preflight) {
+    console.log(
+      'Store preflight passed; no upload or metadata change was performed.'
+    )
+    return
+  }
+  await handlers[target]()
+}
+
+main().catch((error) => {
   console.error('Submission failed:', error.message)
   process.exit(1)
 })

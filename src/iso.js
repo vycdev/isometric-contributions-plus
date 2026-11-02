@@ -1,7 +1,17 @@
+import { renderCalendarIntensity } from './calendar.js'
 import { fetchExtendedStreakData } from './history.js'
+import {
+  applyContributionPalette,
+  createContributionPalette,
+  DEFAULT_CONTRIBUTION_COLOR,
+  isDarkTheme,
+  normalizeContributionColor
+} from './palette.js'
+import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 import {
   applyViewType,
   calculateStreaks,
+  contributionHeight,
   datesDayDifference,
   generateContributionsMarkup,
   generateStreaksMarkup,
@@ -53,6 +63,10 @@ let datesLongest = null
 let datesCurrent = null
 let dateBest = null
 let toggleSetting = 'cubes'
+let heightScale = 'linear'
+let contributionColor = DEFAULT_CONTRIBUTION_COLOR
+const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)')
+let palette
 let chartGeneration = 0
 let historyRequest = null
 
@@ -90,6 +104,19 @@ const getStorage = () => {
 
 const getSettings = async () => {
   toggleSetting = await loadSetting(getStorage(), 'toggleSetting', 'cubes')
+  const savedHeightScale = await loadSetting(
+    getStorage(),
+    'heightScale',
+    'linear'
+  )
+  heightScale = normalizeHeightScale(savedHeightScale)
+  contributionColor = normalizeContributionColor(
+    await loadSetting(
+      getStorage(),
+      'contributionColor',
+      DEFAULT_CONTRIBUTION_COLOR
+    )
+  )
   return 'Settings loaded'
 }
 
@@ -185,6 +212,16 @@ const initUI = () => {
   canvas.style.width = '100%'
   contributionsWrapper.append(canvas)
 
+  const legend = document.createElement('div')
+  legend.className =
+    'ic-contribution-legend position-absolute bottom-0 right-0 mr-5 mb-3 text-small color-fg-muted'
+  legend.setAttribute('role', 'img')
+  legend.setAttribute('aria-label', 'Contribution activity, from less to more')
+  legend.innerHTML = `Less ${[0, 1, 2, 3, 4]
+    .map((level) => `<span data-level="${level}"></span>`)
+    .join('')} More`
+  contributionsWrapper.append(legend)
+
   // Inject toggle
   const heading = contributionsBox.querySelector('h2')
 
@@ -261,31 +298,53 @@ const setContainerViewType = (type) => {
   applyViewType(contributionsBox, type)
 }
 
-const getSquareColor = (rect) => getElementColor(rect)
+const getSquareColor = (rect) =>
+  palette.levels[Number(rect.dataset.level)]?.slice(1) ?? getElementColor(rect)
+
+const themeContributionActivity = () => {
+  const activity = document.getElementById('js-contribution-activity')
+  if (!activity || !palette) return
+  activity.classList.add('ic-activity-themed')
+  applyContributionPalette(activity, palette)
+}
+
+const applyTheme = () => {
+  palette = createContributionPalette(
+    contributionColor,
+    isDarkTheme(document.documentElement, colorScheme.matches)
+  )
+  contributionsBox.classList.add('ic-themed')
+  applyContributionPalette(contributionsBox, palette)
+  themeContributionActivity()
+}
 
 const refreshColors = () => {
-  const dayElements = document.querySelectorAll(
-    '.js-calendar-graph-table tbody td.ContributionCalendar-day'
+  calendarGraph.classList.remove('ic-calendar-scaled')
+  const dayElements = calendarGraph.querySelectorAll(
+    '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
+  )
+  const byDate = new Map(
+    [...dayElements].map((node) => [node.dataset.date, node])
   )
   for (const d of days) {
-    const element = [...dayElements].find(
-      (node) => node.dataset.date === d.date.toISOString().split('T')[0]
-    )
+    const element = byDate.get(d.date.toISOString().slice(0, 10))
     if (element) {
       d.color = getSquareColor(element)
     }
   }
 }
 
-const loadStats = () => {
-  const dayElements = document.querySelectorAll(
-    '.js-calendar-graph-table tbody td.ContributionCalendar-day'
-  )
-  const tooltipElements = document.querySelectorAll(
-    '.js-calendar-graph tool-tip'
+const readCalendarDays = (graph, getColorFn = getSquareColor) =>
+  parseCalendarGraph(
+    graph.querySelectorAll(
+      '.js-calendar-graph-table tbody td.ContributionCalendar-day[data-date]'
+    ),
+    graph.querySelectorAll('tool-tip'),
+    getColorFn
   )
 
-  days = parseCalendarGraph(dayElements, tooltipElements, getSquareColor)
+const loadStats = () => {
+  days = readCalendarDays(calendarGraph)
   weeks = Object.values(
     days.reduce((acc, day) => {
       const key = day.week
@@ -368,8 +427,18 @@ const renderIsometricChart = () => {
   const MAX_HEIGHT = 100
   const GH_OFFSET = 14
   const canvas = document.querySelector('#isometric-contributions')
+  const scale = HEIGHT_SCALES[heightScale]
+  canvas.setAttribute(
+    'aria-label',
+    `Contribution chart with ${scale.label.toLowerCase()} bar heights`
+  )
+  canvas.title = scale.description
+  const scaleLabel = document.getElementById('ic-height-scale-label')
+  scaleLabel.textContent = `Scale: ${scale.label}`
+  scaleLabel.title = scale.description
   const point = new obelisk.Point(130, 90)
   const pixelView = new obelisk.PixelView(canvas, point)
+  pixelView.clear()
 
   let transform = GH_OFFSET
 
@@ -380,15 +449,12 @@ const renderIsometricChart = () => {
     for (const d of w) {
       const y = offsetY / GH_OFFSET
       offsetY += 13
-      const currentDayCount = d.count
-      let cubeHeight = 3
-
-      if (maxCount > 0) {
-        cubeHeight += Number.parseInt(
-          (MAX_HEIGHT / maxCount) * currentDayCount,
-          10
-        )
-      }
+      const cubeHeight = contributionHeight(
+        d.count,
+        maxCount,
+        heightScale,
+        MAX_HEIGHT
+      )
 
       const dimension = new obelisk.CubeDimension(SIZE, SIZE, cubeHeight)
       const color = new obelisk.CubeColor().getByHorizontalColor(
@@ -399,6 +465,17 @@ const renderIsometricChart = () => {
       pixelView.renderObject(cube, p3d)
     }
   }
+}
+
+const renderCharts = () => {
+  renderCalendarIntensity(
+    calendarGraph,
+    days,
+    maxCount,
+    heightScale,
+    palette.levels
+  )
+  renderIsometricChart()
 }
 
 const renderStats = () => {
@@ -424,7 +501,8 @@ const renderStats = () => {
   }
 
   const topMarkup = generateContributionsMarkup(contributionsStats, {
-    showWeek: !viewingYear
+    showWeek: !viewingYear,
+    heightScale
   })
   const bottomMarkup = generateStreaksMarkup(streaksStats, {
     showCurrent: !viewingYear,
@@ -446,22 +524,30 @@ const generateIsometricChart = () => {
   contributionsBox = document.querySelector('.js-yearly-contributions')
 
   resetValues()
+  applyTheme()
+  calendarGraph.classList.remove('ic-calendar-scaled')
   initUI()
   loadStats()
   renderStats()
-  renderIsometricChart()
+  renderCharts()
 
   extendStreakDataAndUpdate()
 }
 
 ;(async () => {
   const initIfReady = () => {
+    themeContributionActivity()
+    const graph = document.querySelector('.js-calendar-graph')
+    if (!graph || document.querySelector('.ic-contributions-wrapper')) return
+    // GitHub can insert the calendar before its count tooltips. Keep its native
+    // colors until exact counts are available for both intensity and statistics.
+    const sourceDays = readCalendarDays(graph, () => null)
     if (
-      document.querySelector('.js-calendar-graph') &&
-      !document.querySelector('.ic-contributions-wrapper')
-    ) {
-      generateIsometricChart()
-    }
+      !sourceDays.length ||
+      sourceDays.some((day) => !Number.isFinite(day.count))
+    )
+      return
+    generateIsometricChart()
   }
 
   let observer = null
@@ -480,19 +566,47 @@ const generateIsometricChart = () => {
     observer?.disconnect()
     const target = document.querySelector('main') || document.body
     observer = new MutationObserver(() => initIfReady())
-    observer.observe(target, { childList: true, subtree: true })
+    observer.observe(target, {
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-labelledby', 'for', 'id'],
+      subtree: true
+    })
   }
 
   await getSettings()
 
-  globalThis
-    .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', () => {
-      if (document.querySelector('.ic-contributions-wrapper')) {
-        refreshColors()
-        renderIsometricChart()
-      }
+  const refreshTheme = () => {
+    if (document.querySelector('.ic-contributions-wrapper')) {
+      applyTheme()
+      refreshColors()
+      renderCharts()
+    }
+  }
+
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return
+      const nextScale = changes.heightScale
+        ? normalizeHeightScale(changes.heightScale.newValue)
+        : heightScale
+      const nextColor = changes.contributionColor
+        ? normalizeContributionColor(changes.contributionColor.newValue)
+        : contributionColor
+      if (heightScale === nextScale && contributionColor === nextColor) return
+      heightScale = nextScale
+      contributionColor = nextColor
+      refreshTheme()
     })
+  }
+
+  colorScheme.addEventListener('change', refreshTheme)
+  const themeObserver = new MutationObserver(refreshTheme)
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-color-mode', 'data-light-theme', 'data-dark-theme']
+  })
 
   setupObserver()
   document.addEventListener('turbo:load', setupObserver)
@@ -501,7 +615,7 @@ const generateIsometricChart = () => {
       document.visibilityState === 'visible' &&
       document.querySelector('.ic-contributions-wrapper')
     ) {
-      renderIsometricChart()
+      refreshTheme()
     }
   })
 })()

@@ -18,22 +18,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Build extension
-        run: npm run build:chrome
-
-      - name: Install Puppeteer
-        run: npm install puppeteer
+        run: pnpm install --frozen-lockfile
 
       - name: Run extension test
-        run: node test-extension.js
+        run: pnpm run test:e2e
 
       - name: Upload screenshot on failure
         if: failure()

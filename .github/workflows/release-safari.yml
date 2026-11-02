@@ -19,8 +19,13 @@ jobs:
     env:
       XCODEPROJ: safari/Isometric Contributions/Isometric Contributions.xcodeproj
       SCHEME: Isometric Contributions
-      ARCHIVE_PATH: .deriveddata-safari/IsometricContributions.xcarchive
-      KEYCHAIN_PATH: /tmp/isometric-contributions-build.keychain-db
+      ARCHIVE_PATH: .deriveddata-safari/IsometricContributionsPlus.xcarchive
+      KEYCHAIN_PATH: /tmp/isometric-contributions-plus-build.keychain-db
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
+      APPLE_INSTALLER_IDENTITY: ${{ vars.APPLE_INSTALLER_IDENTITY }}
+      APPLE_APP_PROFILE_NAME: ${{ vars.APPLE_APP_PROFILE_NAME }}
+      APPLE_EXTENSION_PROFILE_NAME: ${{ vars.APPLE_EXTENSION_PROFILE_NAME }}
 
     steps:
       - name: Checkout
@@ -28,20 +33,44 @@ jobs:
         with:
           ref: ${{ inputs.ref || '' }}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Check fork signing and submission configuration
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
+          APPLE_INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERT_PASSWORD }}
+          PROVISIONING_PROFILE_APP_BASE64: ${{ secrets.PROVISIONING_PROFILE_APP_BASE64 }}
+          PROVISIONING_PROFILE_EXT_BASE64: ${{ secrets.PROVISIONING_PROFILE_EXT_BASE64 }}
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          node scripts/configure-safari.js
+          for name in APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_INSTALLER_CERT_BASE64 APPLE_INSTALLER_CERT_PASSWORD PROVISIONING_PROFILE_APP_BASE64 PROVISIONING_PROFILE_EXT_BASE64 ASC_API_KEY_BASE64 ASC_API_KEY_ID ASC_API_ISSUER_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing fork publishing configuration: $name. See PUBLISHING.md."
+              exit 1
+            fi
+          done
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Build extension and sync resources
-        run: node scripts/build-safari.js --resources-only
+        run: pnpm run build:safari --resources-only
 
       - name: Import signing certificates
         env:
@@ -56,6 +85,7 @@ jobs:
           test -n "$APPLE_INSTALLER_CERT_PASSWORD"
 
           KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -106,8 +136,6 @@ jobs:
             > ~/.private_keys/AuthKey_${ASC_API_KEY_ID}.p8
 
       - name: Archive
-        env:
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           xcodebuild archive \
             -project "$XCODEPROJ" \
@@ -115,15 +143,12 @@ jobs:
             -configuration Release \
             -destination 'platform=macOS' \
             -archivePath "$ARCHIVE_PATH" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
+            -xcconfig .deriveddata-safari/Signing.xcconfig \
             CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
 
       - name: Build installer package
         run: |
-          set -x
-          APP_PATH="$ARCHIVE_PATH/Products/Applications/Isometric Contributions.app"
+          APP_PATH="$ARCHIVE_PATH/Products/Applications/Isometric Contributions Plus.app"
 
           echo "=== Archive contents ==="
           find "$ARCHIVE_PATH/Products" -maxdepth 3 -type d || true
@@ -132,7 +157,7 @@ jobs:
           cp ~/Library/MobileDevice/Provisioning\ Profiles/app.provisionprofile \
             "$APP_PATH/Contents/embedded.provisionprofile"
           cp ~/Library/MobileDevice/Provisioning\ Profiles/extension.provisionprofile \
-            "$APP_PATH/Contents/PlugIns/Isometric Contributions Extension.appex/Contents/embedded.provisionprofile"
+            "$APP_PATH/Contents/PlugIns/Isometric Contributions Plus Extension.appex/Contents/embedded.provisionprofile"
 
           echo "=== Unlocking keychain ==="
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -140,19 +165,18 @@ jobs:
           echo "=== Building unsigned pkg ==="
           productbuild \
             --component "$APP_PATH" /Applications \
-            IsometricContributions-unsigned.pkg
+            IsometricContributionsPlus-unsigned.pkg
           echo "=== Unsigned pkg built ==="
 
           echo "=== Signing pkg ==="
-          INSTALLER_IDENTITY="3rd Party Mac Developer Installer: Jason Long (DC57SSRSQE)"
           productsign \
-            --sign "$INSTALLER_IDENTITY" \
+            --sign "$APPLE_INSTALLER_IDENTITY" \
             --keychain "$KEYCHAIN_PATH" \
-            IsometricContributions-unsigned.pkg \
-            IsometricContributions.pkg
+            IsometricContributionsPlus-unsigned.pkg \
+            IsometricContributionsPlus.pkg
           echo "=== Signed pkg built ==="
 
-          ls -la IsometricContributions.pkg
+          ls -la IsometricContributionsPlus.pkg
 
       - name: Upload to App Store Connect
         env:
@@ -160,7 +184,7 @@ jobs:
           ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
         run: |
           xcrun altool --upload-app \
-            -f IsometricContributions.pkg \
+            -f IsometricContributionsPlus.pkg \
             --type macos \
             --apiKey "$ASC_API_KEY_ID" \
             --apiIssuer "$ASC_API_ISSUER_ID"
