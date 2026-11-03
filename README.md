@@ -32,14 +32,23 @@ The 2D colors interpolate through the current palette; legend swatches represent
 
 `contributionIntensity` in `src/utils.js` owns the normalization shared by height and intensity. The runtime supplies its five selected palette stops to `src/calendar.js`, which interpolates between adjacent stops; standalone callers can also sample the unscaled `.ContributionCalendar-day[data-level="0".."4"]` fills. The intensity renderer writes `--ic-intensity-color` on dated squares and preserves `data-level`. Cubes keep the original activity buckets while using the selected palette and height scale. Color and appearance changes refresh both views and their legends together. The existing `heightScale` storage key is retained for compatibility.
 
-<img src="img/settings-light.png" width="328" alt="Blue settings menu in light mode" />
-<img src="img/settings-dark.png" width="328" alt="Blue settings menu in dark mode" />
+<img src="img/settings-light.png" width="328" alt="Settings menu in light mode with the default blue contribution color and the Linear scale selected" />
+<img src="img/settings-dark.png" width="328" alt="Settings menu in dark mode with the default blue contribution color and the Linear scale selected" />
 
 ## Contribution color
 
 Open the extension's toolbar menu and choose a **Contribution color**. Readable intensity shades are derived from that color for light and dark themes. The calendar, its legend, the isometric cubes, contribution statistics, Activity overview chart, Contribution activity bars, and view controls update together on open GitHub profiles. **Reset to blue** restores the default color (`#0969da`) without changing the height scale.
 
+<img src="img/settings-color-light.png" width="328" alt="Settings menu in light mode with purple #8250df chosen as the base color, its five derived shades, and purple accents" />
+<img src="img/settings-color-dark.png" width="328" alt="Settings menu in dark mode with purple #8250df chosen as the base color, its five lighter derived shades, and purple accents" />
+
 Your color is saved across profiles, selected years, and reloads. It works in 2D, 3D, and Both modes with every height scale. Colors only change presentation: contribution counts, dates, tooltips, statistics, and GitHub's intensity buckets retain their original values.
+
+The same sample chart in green (`#1a7f37`), purple (`#8250df`), and orange (`#e16f24`), in light and dark themes:
+
+<img src="img/colors.png" width="1052" alt="The same contribution chart in light mode, shown three times in green, purple, and orange: cubes, statistics, both legends, and the 2D calendar all use the chosen color while the counts are identical" />
+
+<img src="img/colors-dark.png" width="1052" alt="The same contribution chart in dark mode, shown three times in green, purple, and orange, with lighter shades derived for the dark theme" />
 
 ## Installation
 

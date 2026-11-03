@@ -27,6 +27,19 @@
 <img src="img/settings-light.png" width="328" alt="浅色设置菜单" />
 <img src="img/settings-dark.png" width="328" alt="深色设置菜单" />
 
+## 贡献颜色
+
+在扩展的工具栏菜单中选择 **Contribution color**（贡献颜色）。扩展会根据所选颜色为浅色和深色主题生成易读的强度色阶；日历及其图例、3D 方块、统计数据和视图切换按钮会一起更新。**Reset to blue** 可恢复默认蓝色（`#0969da`），不会改变缩放设置。颜色只影响显示效果，贡献数量、日期、提示信息与统计数据保持不变。
+
+<img src="img/settings-color-light.png" width="328" alt="浅色设置菜单，已选择紫色 #8250df" />
+<img src="img/settings-color-dark.png" width="328" alt="深色设置菜单，已选择紫色 #8250df" />
+
+同一份示例数据分别使用绿色（`#1a7f37`）、紫色（`#8250df`）和橙色（`#e16f24`）的效果：
+
+<img src="img/colors.png" width="1052" alt="浅色主题下绿色、紫色和橙色的贡献图" />
+
+<img src="img/colors-dark.png" width="1052" alt="深色主题下绿色、紫色和橙色的贡献图" />
+
 ## 安装方式
 
 **Plus 尚无经过确认的 Chrome、Firefox、Edge 或 Safari 商店页面。** 原扩展的商店页面不会安装本分支。请先从源码构建；后续发布包将出现在[本仓库的 Releases 页面](https://github.com/vycdev/isometric-contributions-plus/releases)。

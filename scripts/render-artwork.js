@@ -6,6 +6,10 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer'
 import { intensityColor } from '../src/calendar.js'
+import {
+  createContributionPalette,
+  DEFAULT_CONTRIBUTION_COLOR
+} from '../src/palette.js'
 import { contributionHeight, contributionIntensity } from '../src/utils.js'
 import { calendarHtml, sampleDays } from './artwork/calendar.js'
 
@@ -13,6 +17,17 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (file) => fs.readFile(path.join(root, file), 'utf8')
 const appDir = 'safari/Isometric Contributions/Isometric Contributions'
 const resourcesDir = `${appDir} Extension/Resources`
+// Palette tokens are hex; computed styles report rgb().
+const rgb = (hex) =>
+  `rgb(${[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+const accentFor = (color, dark) =>
+  rgb(createContributionPalette(color, dark).accent)
+// Custom colors showcased in the README, in display order.
+const showcaseColors = [
+  { name: 'green', color: '#1a7f37' },
+  { name: 'purple', color: '#8250df' },
+  { name: 'orange', color: '#e16f24' }
+]
 const browser = await puppeteer.launch({
   headless: true,
   pipe: true,
@@ -85,6 +100,8 @@ try {
             addListener: (callback) => {
               window.changeScale = (scale) =>
                 callback({ heightScale: { newValue: scale } }, 'local')
+              window.changeColor = (color) =>
+                callback({ contributionColor: { newValue: color } }, 'local')
             }
           }
         }
@@ -205,7 +222,7 @@ try {
         const isDark = mode === 'dark' || (mode === 'auto' && os === 'dark')
         assert.equal(
           palette.accent,
-          isDark ? 'rgb(88, 166, 255)' : 'rgb(9, 105, 218)'
+          accentFor(DEFAULT_CONTRIBUTION_COLOR, isDark)
         )
         if (!isDark) assert.deepEqual(palette.dayColors, lightColors.dayColors)
         const pixels = await page.$eval('canvas', (canvas) => {
@@ -321,13 +338,173 @@ try {
           'input:checked',
           (node) => getComputedStyle(node).accentColor
         ),
-        mode === 'dark' ? 'rgb(88, 166, 255)' : 'rgb(9, 105, 218)'
+        accentFor(DEFAULT_CONTRIBUTION_COLOR, mode === 'dark')
       )
       await (await popup.$('body')).screenshot({
         path: path.join(root, `img/settings-${mode}.png`)
       })
       await popup.close()
     }
+    // Custom colors: verify every recolored surface, then capture showcases.
+    const hue = (hex) => {
+      const [r, g, b] = [1, 3, 5].map(
+        (i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255
+      )
+      const max = Math.max(r, g, b)
+      const delta = max - Math.min(r, g, b)
+      if (!delta) return 0
+      const h =
+        max === r
+          ? ((g - b) / delta) % 6
+          : max === g
+            ? (b - r) / delta + 2
+            : (r - g) / delta + 4
+      return (h * 60 + 360) % 360
+    }
+    const showcase = { light: [], dark: [] }
+    for (const { name, color } of showcaseColors) {
+      await page.evaluate((color) => window.changeColor(color), color)
+      for (const mode of ['light', 'dark']) {
+        const dark = mode === 'dark'
+        await page.evaluate(
+          (mode) => (document.documentElement.dataset.colorMode = mode),
+          mode
+        )
+        await page.evaluate(() => new Promise(requestAnimationFrame))
+        const expected = createContributionPalette(color, dark)
+        const palette = await colors()
+        assert.deepEqual(
+          palette.legendColors,
+          expected.levels.map(rgb),
+          `The 2D legend uses the ${name} ${mode} palette`
+        )
+        assert.deepEqual(palette.cubeLegendColors, palette.legendColors)
+        assert.equal(palette.accent, rgb(expected.accent))
+        // Saturated cube pixels stay near the chosen hue; gray floors are skipped.
+        const cubeHues = await page.$eval(
+          'canvas',
+          (canvas, target) => {
+            const data = canvas
+              .getContext('2d')
+              .getImageData(0, 0, canvas.width, canvas.height).data
+            let near = 0
+            let far = 0
+            for (let i = 0; i < data.length; i += 4) {
+              if (!data[i + 3]) continue
+              const [r, g, b] = [data[i], data[i + 1], data[i + 2]]
+              const max = Math.max(r, g, b)
+              const delta = max - Math.min(r, g, b)
+              if (delta < 40) continue
+              const h =
+                max === r
+                  ? ((g - b) / delta) % 6
+                  : max === g
+                    ? (b - r) / delta + 2
+                    : (r - g) / delta + 4
+              const distance = Math.abs(((h * 60 + 360) % 360) - target)
+              if (Math.min(distance, 360 - distance) <= 20) near++
+              else far++
+            }
+            return { near, far }
+          },
+          hue(color)
+        )
+        assert.ok(cubeHues.near > 10000, `${name} cubes in ${mode} theme`)
+        assert.ok(
+          cubeHues.far < cubeHues.near / 50,
+          `${name} cubes in ${mode} theme contain no other hues`
+        )
+        assert.deepEqual(await statsText(), originalStats)
+        showcase[mode].push({
+          name,
+          color,
+          image: await section.screenshot({ encoding: 'base64' })
+        })
+      }
+      console.log(`Verified ${name} (${color}) in light and dark themes.`)
+    }
+    await page.evaluate(
+      (color) => window.changeColor(color),
+      DEFAULT_CONTRIBUTION_COLOR
+    )
+    // Compose one captioned grid per theme, half-size so the README stays short.
+    const grid = await browser.newPage()
+    for (const mode of ['light', 'dark']) {
+      const dark = mode === 'dark'
+      await grid.setViewport({ width: 800, height: 600, deviceScaleFactor: 1 })
+      await grid.setContent(`<style>
+        body{margin:0;display:inline-flex;gap:32px;padding:24px 32px 32px;
+          background:${dark ? '#0d1117' : '#ffffff'};color:${dark ? '#f0f6fc' : '#1f2328'};
+          font:600 22px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif}
+        figure{margin:0} img{display:block;width:744px}
+        figcaption{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+        figcaption i{width:22px;height:22px;border-radius:6px}
+        figcaption code{font:400 20px ui-monospace,SFMono-Regular,Consolas,monospace;opacity:.75}
+        </style>${showcase[mode]
+          .map(
+            ({ name, color, image }) =>
+              `<figure><figcaption><i style="background:${color}"></i>${name[0].toUpperCase()}${name.slice(1)}<code>${color}</code></figcaption><img src="data:image/png;base64,${image}" alt=""></figure>`
+          )
+          .join('')}`)
+      await grid.evaluate(() =>
+        Promise.all([...document.images].map((img) => img.decode()))
+      )
+      await (await grid.$('body')).screenshot({
+        path: path.join(root, `img/colors${dark ? '-dark' : ''}.png`)
+      })
+    }
+    await grid.close()
+
+    // The settings menu with a custom color: picker, swatches, accents.
+    const featured = showcaseColors.find(({ name }) => name === 'purple')
+    for (const mode of ['light', 'dark']) {
+      const popup = await browser.newPage()
+      await popup.setViewport({ width: 328, height: 480, deviceScaleFactor: 2 })
+      await popup.emulateMediaFeatures([
+        { name: 'prefers-color-scheme', value: mode }
+      ])
+      const popupUrl = `chrome-extension://${extensionId}/${manifest.action.default_popup}`
+      await popup.goto(popupUrl)
+      await popup.evaluate(
+        (color) =>
+          new Promise((resolve) =>
+            chrome.storage.local.set({ contributionColor: color }, resolve)
+          ),
+        featured.color
+      )
+      await popup.reload()
+      await popup.waitForSelector('input:checked')
+      const expected = createContributionPalette(
+        featured.color,
+        mode === 'dark'
+      )
+      assert.deepEqual(
+        await popup.evaluate(() => ({
+          value: document.getElementById('color-value').value,
+          accent: getComputedStyle(document.querySelector('input:checked'))
+            .accentColor,
+          swatches: [...document.querySelectorAll('#palette-preview span')].map(
+            (node) => getComputedStyle(node).backgroundColor
+          )
+        })),
+        {
+          value: featured.color,
+          accent: rgb(expected.accent),
+          swatches: expected.levels.map(rgb)
+        }
+      )
+      await (await popup.$('body')).screenshot({
+        path: path.join(root, `img/settings-color-${mode}.png`)
+      })
+      await popup.evaluate(
+        () =>
+          new Promise((resolve) =>
+            chrome.storage.local.remove('contributionColor', resolve)
+          )
+      )
+      await popup.close()
+    }
+
     // Store image uses the same live chart, framed with the fork's name.
     await page.click('[data-ic-option="cubes"]')
     await page.emulateMediaFeatures([
@@ -373,7 +550,7 @@ try {
     })
     assert.deepEqual(errors, [])
     console.log(
-      'Rendered light/dark README, settings, and store artwork; all theme checks passed.'
+      'Rendered light/dark README, custom color, settings, and store artwork; all theme checks passed.'
     )
   }
 } finally {
