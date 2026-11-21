@@ -57,40 +57,190 @@
   background: var(--ic-day-color);
 }
 
-.js-yearly-contributions .ic-toggle-option.selected {
-  color: var(--ic-accent);
-  background: var(--ic-selected);
+.ic-line-view {
+  margin: 8px 0 16px;
+  padding: 0 16px;
 }
 
-/* Normal chart display (2D only) */
-.ic-squares #isometric-contributions,
-.ic-squares .ic-contributions-wrapper {
+.ic-view-cubes.ic-view-line .ic-line-view {
+  margin-top: 0;
+}
+
+/* View visibility. Rules apply only after the extension marks the box, so
+   GitHub's calendar stays visible on pages where the extension never runs. */
+.ic-views:not(.ic-view-squares) .contrib-details {
   display: none;
 }
 
-/* Isometric cube display (3D only) */
-.ic-cubes .contrib-details {
-  display: none;
-}
-
-.ic-cubes .js-calendar-graph {
+.ic-views:not(.ic-view-squares) .js-calendar-graph {
   /* Override GitHub Primer's d-flex !important */
   display: none !important;
 }
 
-/* Both display - no hiding needed, both are visible by default */
-
-.ic-themed .color-fg-success,
-.ic-themed .ic-toggle-option.selected {
-  color: var(--ic-accent) !important;
+.ic-views:not(.ic-view-cubes) .ic-cubes-view,
+.ic-views:not(.ic-view-line) .ic-line-view,
+.ic-views:not(.ic-view-cubes):not(.ic-view-line) .ic-contributions-wrapper {
+  display: none;
 }
 
-.ic-themed .ic-toggle-option.selected {
+/* Line trend view */
+.ic-line-view svg {
+  display: block;
+  overflow: visible;
+  border-radius: 6px;
+}
+
+.ic-line-view svg:focus-visible {
+  outline: 2px solid var(--ic-accent);
+  outline-offset: 2px;
+}
+
+.ic-line-view text {
+  fill: var(--fgColor-muted, var(--color-fg-muted, #59636e));
+  font-size: 11px;
+}
+
+.ic-line-view .ic-line-label {
+  fill: var(--fgColor-default, var(--color-fg-default, #1f2328));
+}
+
+.ic-line-grid {
+  stroke: var(--borderColor-muted, var(--color-border-muted, #d1d9e0b3));
+  stroke-dasharray: 2 3;
+}
+
+.ic-line-grid.ic-line-baseline {
+  stroke: var(--borderColor-default, var(--color-border-default, #d1d9e0));
+  stroke-dasharray: none;
+}
+
+.ic-line-primary {
+  fill: none;
+  stroke: var(--ic-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.ic-line-previous {
+  fill: none;
+  stroke: var(--fgColor-muted, var(--color-fg-muted, #8b949e));
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.ic-line-bar {
+  fill: var(--ic-level-2);
+  opacity: 0.55;
+}
+
+.ic-line-area {
+  fill: var(--ic-accent);
+  opacity: 0.12;
+}
+
+.ic-line-band {
+  fill: var(--ic-accent);
+  opacity: 0.07;
+}
+
+.ic-line-best,
+.ic-line-hover-primary {
+  fill: var(--ic-accent);
+  stroke: var(--bgColor-default, var(--color-canvas-default, #ffffff));
+  stroke-width: 2;
+}
+
+.ic-line-hover-previous {
+  fill: var(--fgColor-muted, var(--color-fg-muted, #8b949e));
+  stroke: var(--bgColor-default, var(--color-canvas-default, #ffffff));
+  stroke-width: 2;
+}
+
+.ic-line-crosshair {
+  stroke: var(--fgColor-muted, var(--color-fg-muted, #8b949e));
+  stroke-width: 1;
+}
+
+.ic-line-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.ic-key {
+  display: inline-block;
+  width: 16px;
+  margin-right: 5px;
+  vertical-align: middle;
+  border-top: 2px solid var(--ic-accent);
+}
+
+.ic-key.ic-key-previous {
+  border-top: 2px dashed var(--fgColor-muted, var(--color-fg-muted, #8b949e));
+}
+
+.ic-key.ic-key-bar {
+  width: 6px;
+  height: 10px;
+  border: 0;
+  border-radius: 1px;
+  background: var(--ic-level-2);
+  opacity: 0.55;
+}
+
+.ic-line-tip {
+  position: absolute;
+  z-index: 1;
+  padding: 6px 10px;
+  border: 1px solid
+    var(--borderColor-default, var(--color-border-default, #d1d9e0));
+  border-radius: 6px;
+  background: var(--overlay-bgColor, var(--bgColor-default, #ffffff));
+  box-shadow: var(--shadow-floating-small, 0 4px 12px #0003);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.ic-line-tip.ic-line-tip-visible {
+  opacity: 1;
+}
+
+.ic-line-tip strong {
+  display: block;
+}
+
+.ic-line-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--fgColor-muted, var(--color-fg-muted, #59636e));
+}
+
+.ic-line-tip-row span:last-child {
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+  font-variant-numeric: tabular-nums;
+}
+
+.ic-line-stats .flex-1 {
+  min-width: 160px;
+  text-align: center;
+}
+
+.ic-themed .ic-line-view .BtnGroup-item.selected {
+  color: var(--ic-accent) !important;
   background-color: var(--ic-selected);
   border-color: var(--ic-accent);
 }
 
-.ic-themed .ic-toggle-option:focus-visible {
+.ic-themed .color-fg-success {
+  color: var(--ic-accent) !important;
+}
+
+.ic-themed .ic-line-view .BtnGroup-item:focus-visible {
   outline: 2px solid var(--ic-accent);
   outline-offset: 2px;
 }

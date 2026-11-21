@@ -47,7 +47,10 @@ export const createContributionPalette = (color, dark = false) => {
   return {
     levels,
     accent: shadeAtLuminance(rgb, dark ? 0.46 : 0.12),
-    selected: shadeAtLuminance(rgb, dark ? 0.025 : 0.9)
+    selected: shadeAtLuminance(rgb, dark ? 0.025 : 0.9),
+    // Solid fill behind white text, like GitHub's selected year. Capping the
+    // luminance keeps white text at 4.5:1 or better for every hue.
+    emphasis: shadeAtLuminance(rgb, dark ? 0.17 : 0.14)
   }
 }
 
@@ -60,6 +63,10 @@ export const applyContributionPalette = (element, palette) => {
 }
 
 export const isDarkTheme = (root, prefersDark) => {
-  const mode = root.dataset.colorMode
-  return mode === 'dark' || (mode !== 'light' && prefersDark)
+  const { colorMode: mode, lightTheme, darkTheme } = root.dataset
+  const useDark = mode === 'dark' || (mode !== 'light' && prefersDark)
+  // GitHub lets the day and night slots hold any theme, e.g. a light theme at
+  // night, so the active theme's name decides when it is known.
+  const theme = useDark ? darkTheme : lightTheme
+  return theme ? theme.startsWith('dark') : useDark
 }

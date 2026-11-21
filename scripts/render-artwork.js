@@ -93,7 +93,7 @@ try {
       window.chrome = {
         storage: {
           local: {
-            get: (_keys, callback) => callback({ toggleSetting: 'both' }),
+            get: (_keys, callback) => callback({ views: ['cubes', 'squares'] }),
             set() {}
           },
           onChanged: {
@@ -102,6 +102,8 @@ try {
                 callback({ heightScale: { newValue: scale } }, 'local')
               window.changeColor = (color) =>
                 callback({ contributionColor: { newValue: color } }, 'local')
+              window.changeViews = (views) =>
+                callback({ views: { newValue: views } }, 'local')
             }
           }
         }
@@ -283,8 +285,8 @@ try {
         await page.$eval('#ic-height-scale-label', (node) => node.textContent),
         `Scale: ${{ linear: 'Linear', 'square-root': 'Square root', logarithmic: 'Logarithmic' }[scale]}`
       )
-      for (const mode of ['squares', 'cubes', 'both']) {
-        await page.click(`[data-ic-option="${mode}"]`)
+      for (const views of [['squares'], ['cubes'], ['cubes', 'squares']]) {
+        await page.evaluate((next) => window.changeViews(next), views)
         const visible = await page.evaluate(() => ({
           calendar:
             getComputedStyle(document.querySelector('.js-calendar-graph'))
@@ -294,8 +296,8 @@ try {
               document.querySelector('.ic-contributions-wrapper')
             ).display !== 'none'
         }))
-        assert.equal(visible.calendar, mode !== 'cubes')
-        assert.equal(visible.cubes, mode !== 'squares')
+        assert.equal(visible.calendar, views.includes('squares'))
+        assert.equal(visible.cubes, views.includes('cubes'))
         assert.deepEqual(await statsText(), originalStats)
       }
       assert.equal(contributionHeight(0, maxCount, scale), 3)
@@ -506,7 +508,7 @@ try {
     }
 
     // Store image uses the same live chart, framed with the fork's name.
-    await page.click('[data-ic-option="cubes"]')
+    await page.evaluate(() => window.changeViews(['cubes']))
     await page.emulateMediaFeatures([
       { name: 'prefers-color-scheme', value: 'light' }
     ])

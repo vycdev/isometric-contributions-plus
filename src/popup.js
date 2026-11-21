@@ -4,9 +4,16 @@ import {
   DEFAULT_CONTRIBUTION_COLOR,
   normalizeContributionColor
 } from './palette.js'
-import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
+import {
+  DEFAULT_VIEWS,
+  HEIGHT_SCALES,
+  normalizeHeightScale,
+  normalizeViews,
+  VIEWS
+} from './settings.js'
 
 const options = document.getElementById('height-scales')
+const viewOptions = document.getElementById('views')
 const fieldset = options.closest('fieldset')
 const colorInput = document.getElementById('contribution-color')
 const colorValue = document.getElementById('color-value')
@@ -19,6 +26,9 @@ let currentColor = savedColor
 let colorRequest = 0
 let savedColorRequest = 0
 let latestColorFailed = false
+let savedViews = [...DEFAULT_VIEWS]
+let viewRequest = 0
+let savedViewRequest = 0
 
 const showColor = (value) => {
   colorInput.value = value
@@ -62,24 +72,57 @@ const chooseColor = (selection) => {
   })
 }
 
-colorInput.addEventListener('input', () => chooseColor(colorInput.value))
+// Dragging in the color picker fires input events continuously, and every
+// save recolors and redraws each open GitHub profile. Preview instantly, but
+// save at most once per interval and always save the final color.
+const COLOR_SAVE_INTERVAL = 150
+let queuedColor = null
+let colorTimer = null
+
+const saveQueuedColor = () => {
+  if (queuedColor === null) return false
+  const value = queuedColor
+  queuedColor = null
+  chooseColor(value)
+  return true
+}
+
+const startColorTimer = () => {
+  colorTimer = setTimeout(() => {
+    colorTimer = null
+    if (saveQueuedColor()) startColorTimer()
+  }, COLOR_SAVE_INTERVAL)
+}
+
+const flushColor = () => {
+  clearTimeout(colorTimer)
+  colorTimer = null
+  saveQueuedColor()
+}
+
+colorInput.addEventListener('input', () => {
+  queuedColor = normalizeContributionColor(colorInput.value)
+  showColor(queuedColor)
+  if (colorTimer) return
+  saveQueuedColor()
+  startColorTimer()
+})
+colorInput.addEventListener('change', flushColor)
+globalThis.addEventListener('pagehide', flushColor)
 document.getElementById('reset-color').addEventListener('click', () => {
+  clearTimeout(colorTimer)
+  colorTimer = null
+  queuedColor = null
   chooseColor(DEFAULT_CONTRIBUTION_COLOR)
 })
 theme?.addEventListener('change', () => showColor(currentColor))
 
-const showSelection = (value) => {
-  for (const input of options.querySelectorAll('input')) {
-    input.checked = input.value === value
-  }
-}
-
-for (const [value, { label, summary }] of Object.entries(HEIGHT_SCALES)) {
-  const option = document.createElement('label')
-  option.className = 'scale-option'
+const option = (type, name, value, { label, summary }) => {
+  const container = document.createElement('label')
+  container.className = 'scale-option'
   const input = document.createElement('input')
-  input.type = 'radio'
-  input.name = 'heightScale'
+  input.type = type
+  input.name = name
   input.value = value
   const text = document.createElement('span')
   const title = document.createElement('strong')
@@ -87,26 +130,80 @@ for (const [value, { label, summary }] of Object.entries(HEIGHT_SCALES)) {
   const description = document.createElement('small')
   description.textContent = summary
   text.append(title, description)
-  option.append(input, text)
-  options.append(option)
+  container.append(input, text)
+  return container
 }
 
-chrome.storage.local.get(['heightScale', 'contributionColor'], (settings) => {
-  if (chrome.runtime.lastError) {
-    status.textContent = 'Could not load settings. Please reopen this menu.'
+for (const [value, view] of Object.entries(VIEWS)) {
+  viewOptions.append(option('checkbox', 'views', value, view))
+}
+
+const checkedViews = () =>
+  [...viewOptions.querySelectorAll('input:checked')].map((input) => input.value)
+
+const showViews = (views) => {
+  for (const input of viewOptions.querySelectorAll('input')) {
+    input.checked = views.includes(input.value)
+  }
+}
+
+viewOptions.addEventListener('change', (event) => {
+  // Keep the last enabled view on instead of greying it out.
+  if (!checkedViews().length) {
+    event.target.checked = true
+    status.textContent = 'At least one view stays on.'
     return
   }
-  savedScale = normalizeHeightScale(settings.heightScale)
-  savedColor = normalizeContributionColor(settings.contributionColor)
-  currentColor = savedColor
-  showSelection(savedScale)
-  showColor(savedColor)
-  for (const group of document.querySelectorAll('fieldset')) {
-    group.disabled = false
-  }
-  status.textContent =
-    'Applies to all GitHub profiles. Changes save automatically.'
+  const views = normalizeViews(checkedViews())
+  const request = ++viewRequest
+  status.textContent = 'Saving…'
+  chrome.storage.local.set({ views }, () => {
+    const failed = Boolean(chrome.runtime.lastError)
+    if (!failed && request > savedViewRequest) {
+      savedViews = views
+      savedViewRequest = request
+    }
+    if (request !== viewRequest) return
+    if (failed) {
+      showViews(savedViews)
+      status.textContent = 'Could not save your views. Please try again.'
+    } else {
+      status.textContent = 'Saved for all GitHub profiles.'
+    }
+  })
 })
+
+const showSelection = (value) => {
+  for (const input of options.querySelectorAll('input')) {
+    input.checked = input.value === value
+  }
+}
+
+for (const [value, scale] of Object.entries(HEIGHT_SCALES)) {
+  options.append(option('radio', 'heightScale', value, scale))
+}
+
+chrome.storage.local.get(
+  ['heightScale', 'contributionColor', 'views', 'toggleSetting'],
+  (settings) => {
+    if (chrome.runtime.lastError) {
+      status.textContent = 'Could not load settings. Please reopen this menu.'
+      return
+    }
+    savedScale = normalizeHeightScale(settings.heightScale)
+    savedViews = normalizeViews(settings.views, settings.toggleSetting)
+    savedColor = normalizeContributionColor(settings.contributionColor)
+    currentColor = savedColor
+    showSelection(savedScale)
+    showViews(savedViews)
+    showColor(savedColor)
+    for (const group of document.querySelectorAll('fieldset')) {
+      group.disabled = false
+    }
+    status.textContent =
+      'Applies to all GitHub profiles. Changes save automatically.'
+  }
+)
 
 options.addEventListener('change', (event) => {
   const value = event.target.value

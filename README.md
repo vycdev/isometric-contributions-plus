@@ -2,7 +2,7 @@
 
 [![Node.js CI status](https://img.shields.io/github/actions/workflow/status/vycdev/isometric-contributions-plus/nodejs.yml?label=CI)](https://github.com/vycdev/isometric-contributions-plus/actions/workflows/nodejs.yml) [![MIT license](https://img.shields.io/github/license/vycdev/isometric-contributions-plus)](LICENSE) [![Support on Patreon](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
 
-This is a browser extension for Chrome/Brave and Firefox that lets you toggle between your regular GitHub contribution chart and an isometric pixel art version. It uses [obelisk.js](https://github.com/nosir/obelisk.js) for the isometric graphics.
+This is a browser extension for Chrome/Brave and Firefox that shows your GitHub contribution chart as isometric pixel art, as a line trend, or as GitHub's regular calendar, in any combination. It uses [obelisk.js](https://github.com/nosir/obelisk.js) for the isometric graphics.
 
 This independent fork is maintained at [vycdev/isometric-contributions-plus](https://github.com/vycdev/isometric-contributions-plus), based on [Jason Long's Isometric Contributions](https://github.com/jasonlong/isometric-contributions). [中文说明](README-zh.md).
 
@@ -16,6 +16,31 @@ Besides being sort of neat looking, this view is interesting in that it highligh
 
 Screenshots use sample contribution data.
 
+## Views
+
+Click the extension's toolbar icon to open its settings menu. Under **Views**, turn on any combination of:
+
+- **3D isometric** (default): the isometric cubes with totals, best day and streaks.
+- **Line trend**: a 28-day average of your daily contributions, with the same dates a year earlier as a dashed line.
+- **2D calendar**: GitHub's own calendar, colored by your contribution scale.
+
+At least one view always stays on. Open GitHub profiles update immediately, and your choice is saved across profiles and reloads. If you used the earlier 2D / 3D / Both buttons, your choice carries over.
+
+### Line trend
+
+The line view answers questions the calendar can't: is your activity rising or falling, and are you more active than a year ago?
+
+- **Activity** shows the 28-day average over faint daily bars. Your best day and longest streak in the period are marked. One unusually busy day is cut off at the top rather than flattening the rest of the chart.
+- **Cumulative** shows your running total racing the year before's.
+- Hover over the chart, or focus it and use the arrow keys, to read any day's count, average and the year-before value.
+- Beneath the chart: your last 30 days compared with the 30 before, the period's total compared with the year before, and your most active weekday.
+
+The comparison shifts dates back 52 weeks so weekdays line up. The year before is requested from GitHub only while the line view is on; completed years are kept for the rest of the page visit, and streaks reuse them. If it cannot load, the chart still shows your own trend. The line chart always uses linear values.
+
+### Past year
+
+Once you pick a year in GitHub's year list, GitHub offers no way back to its default view of the past 12 months. The extension adds a **Past year** entry at the top of the list that returns to it.
+
 ## Contribution scale
 
 Click the extension's toolbar icon to open its settings menu. Under **Contribution scale**, choose how 3D bar heights and 2D color intensity represent daily contributions:
@@ -24,7 +49,7 @@ Click the extension's toolbar icon to open its settings menu. Under **Contributi
 - **Square root**: gives everyday activity a moderate boost while keeping peaks distinct. A gentler adjustment than logarithmic scaling, with less crowding from tall neighboring bars.
 - **Logarithmic**: reduces the visual impact of unusually busy days so everyday activity is easier to see.
 
-Open GitHub charts update immediately in 2D, 3D, and Both modes when you change the setting. The selected scale is displayed beside the daily average and beneath the 2D legend. Your choice is saved across profiles, years, and page reloads. All three scales keep inactive days neutral and flat, and the busiest visible day at maximum intensity and height. Square-root and logarithmic heights and intensities are not proportional to counts. Calendar square sizes, dates, counts, tooltips, totals, averages, and streaks stay unchanged.
+Open GitHub charts update immediately in every view when you change the setting. The selected scale is displayed beside the daily average and beneath the 2D legend. Your choice is saved across profiles, years, and page reloads. All three scales keep inactive days neutral and flat, and the busiest visible day at maximum intensity and height. Square-root and logarithmic heights and intensities are not proportional to counts. Calendar square sizes, dates, counts, tooltips, totals, averages, and streaks stay unchanged.
 
 The 2D colors interpolate through the current palette; legend swatches represent 0%, 25%, 50%, 75%, and 100% of the selected intensity scale. For a 609-contribution peak, a 10-contribution day has about 1.6% Linear, 12.8% Square root, or 37.4% Logarithmic intensity. Empty years stay neutral; a year with one contribution gives that day maximum intensity.
 
@@ -42,7 +67,7 @@ Open the extension's toolbar menu and choose a **Contribution color**. Readable 
 <img src="img/settings-color-light.png" width="328" alt="Settings menu in light mode with purple #8250df chosen as the base color, its five derived shades, and purple accents" />
 <img src="img/settings-color-dark.png" width="328" alt="Settings menu in dark mode with purple #8250df chosen as the base color, its five lighter derived shades, and purple accents" />
 
-Your color is saved across profiles, selected years, and reloads. It works in 2D, 3D, and Both modes with every height scale. Colors only change presentation: contribution counts, dates, tooltips, statistics, and GitHub's intensity buckets retain their original values.
+Your color is saved across profiles, selected years, and reloads. It works in every view with every height scale. Colors only change presentation: contribution counts, dates, tooltips, statistics, and GitHub's intensity buckets retain their original values.
 
 The same sample chart in green (`#1a7f37`), purple (`#8250df`), and orange (`#e16f24`), in light and dark themes:
 
@@ -64,7 +89,7 @@ pnpm run build
 ```
 
 - **Chrome/Brave/Edge:** open `chrome://extensions`, `brave://extensions`, or `edge://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
-- **Firefox:** run `pnpm run build:firefox`, then open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `dist/manifest.json`. Temporary installations disappear when Firefox restarts. Packaging uses the local `web-ext` tool; no system `zip` command is required.
+- **Firefox** (version 121 or later): run `pnpm run build:firefox`, then open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `dist/manifest.json`. Temporary installations disappear when Firefox restarts. Packaging uses the local `web-ext` tool; no system `zip` command is required.
 - **Safari:** `pnpm run build:safari --resources-only` generates the browser resources on any supported development platform. Building the native app requires macOS/Xcode; see [publishing configuration](PUBLISHING.md#safari).
 
 Use the built `dist/` directory; source modules in `src/` need Parcel compilation. Reload the extension after rebuilding. The toolbar popup configures contribution scaling; this fork currently runs on `github.com`, without an Enterprise-domain enable menu.

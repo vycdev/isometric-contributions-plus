@@ -8,11 +8,11 @@ This extension does not collect, store, or transmit any personal data. It does n
 
 ## Data Usage
 
-The extension reads contribution data from the GitHub profile page you are viewing and may request earlier contribution years from GitHub to calculate streaks. Rendering and statistics are processed within your browser; the extension does not send this data to a separate service.
+The extension reads contribution data from the GitHub profile page you are viewing and may request earlier contribution years from GitHub to calculate streaks and, when the line view is on, to compare with the year before. Rendering and statistics are processed within your browser; the extension does not send this data to a separate service.
 
 ## Storage
 
-The extension stores your view preference (2D, 3D, or Both) and height scale locally in your browser using the browser's built-in storage API. These settings never leave your device.
+The extension stores your enabled views, line chart measure, contribution color and height scale locally in your browser using the browser's built-in storage API. These settings never leave your device.
 
 ## Contact
 

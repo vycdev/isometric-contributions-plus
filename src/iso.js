@@ -1,5 +1,10 @@
 import { renderCalendarIntensity } from './calendar.js'
-import { fetchExtendedStreakData } from './history.js'
+import {
+  fetchContributionRange,
+  fetchExtendedStreakData,
+  fetchFollowingStreakData
+} from './history.js'
+import { buildTrendSeries, comparisonRange, renderTrendChart } from './line.js'
 import {
   applyContributionPalette,
   createContributionPalette,
@@ -7,21 +12,32 @@ import {
   isDarkTheme,
   normalizeContributionColor
 } from './palette.js'
-import { HEIGHT_SCALES, normalizeHeightScale } from './settings.js'
 import {
-  applyViewType,
+  HEIGHT_SCALES,
+  normalizeHeightScale,
+  normalizeLineMode,
+  normalizeViews
+} from './settings.js'
+import {
+  applyViews,
   calculateStreaks,
   contributionHeight,
   datesDayDifference,
   generateContributionsMarkup,
   generateStreaksMarkup,
   getElementColor,
+  isToday,
   loadSetting,
+  localDateKey,
   parseCalendarGraph,
   precisionRound,
-  sameDay,
   saveSetting
 } from './utils.js'
+import {
+  addPastYearLinks,
+  restorePastYearScroll,
+  themeYearList
+} from './years.js'
 
 const dateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -53,6 +69,9 @@ let streakLongest = 0
 let streakCurrent = 0
 let longestStreakLoading = false
 let currentStreakLoading = false
+// Which directions a streak touching the period's edges may continue in.
+let extendBackward = false
+let extendForward = false
 let bestDay = null
 let firstDay = null
 let lastDay = null
@@ -62,7 +81,14 @@ let weekDatesTotal = null
 let datesLongest = null
 let datesCurrent = null
 let dateBest = null
-let toggleSetting = 'cubes'
+let views = normalizeViews()
+let legacyToggle = null
+let lineMode = 'activity'
+let lineHistory = null
+let lineComparison = 'loading'
+let lineRequest = null
+let lineResizeObserver = null
+let cubesStale = false
 let heightScale = 'linear'
 let contributionColor = DEFAULT_CONTRIBUTION_COLOR
 const colorScheme = globalThis.matchMedia('(prefers-color-scheme: dark)')
@@ -74,6 +100,10 @@ const cancelHistoryRequest = () => {
   chartGeneration++
   historyRequest?.abort()
   historyRequest = null
+  lineRequest?.abort()
+  lineRequest = null
+  lineResizeObserver?.disconnect()
+  lineResizeObserver = null
 }
 
 const resetValues = () => {
@@ -92,6 +122,8 @@ const resetValues = () => {
   datesLongest = null
   datesCurrent = null
   weekStartDay = null
+  lineHistory = null
+  lineComparison = 'loading'
 }
 
 const getStorage = () => {
@@ -103,7 +135,14 @@ const getStorage = () => {
 }
 
 const getSettings = async () => {
-  toggleSetting = await loadSetting(getStorage(), 'toggleSetting', 'cubes')
+  legacyToggle = await loadSetting(getStorage(), 'toggleSetting', null)
+  views = normalizeViews(
+    await loadSetting(getStorage(), 'views', null),
+    legacyToggle
+  )
+  lineMode = normalizeLineMode(
+    await loadSetting(getStorage(), 'lineMode', 'activity')
+  )
   const savedHeightScale = await loadSetting(
     getStorage(),
     'heightScale',
@@ -135,16 +174,27 @@ const extendStreakDataAndUpdate = async () => {
   const username = getProfileUsername()
   const generation = chartGeneration
   const sourceDays = days
+  const periodEnd = lastDay
   const wrapper = document.querySelector('.ic-contributions-wrapper')
   const controller = new AbortController()
   historyRequest = controller
-  let extendedDays = days
+  let extendedDays = days.filter(
+    (day) => day.date.getTime() <= periodEnd.getTime()
+  )
 
   try {
-    if (username) {
+    if (username && extendBackward) {
       extendedDays = await fetchExtendedStreakData(
         username,
-        sourceDays,
+        extendedDays,
+        10,
+        controller.signal
+      )
+    }
+    if (username && extendForward) {
+      extendedDays = await fetchFollowingStreakData(
+        username,
+        extendedDays,
         10,
         controller.signal
       )
@@ -164,7 +214,10 @@ const extendStreakDataAndUpdate = async () => {
   }
   historyRequest = null
 
-  const extendedStats = calculateStreaks(extendedDays)
+  const extendedStats = calculateStreaks(extendedDays, {
+    countFrom: sourceDays[0].date,
+    countUntil: periodEnd
+  })
   streakLongest = extendedStats.streakLongest
   streakCurrent = extendedStats.streakCurrent
   longestStreakLoading = false
@@ -202,15 +255,20 @@ const extendStreakDataAndUpdate = async () => {
 
 const initUI = () => {
   const contributionsWrapper = document.createElement('div')
-  contributionsWrapper.className = 'ic-contributions-wrapper position-relative'
+  contributionsWrapper.className = 'ic-contributions-wrapper'
   calendarGraph.before(contributionsWrapper)
+
+  // Statistics overlay the canvas, so they live with it in the 3D view.
+  const cubesView = document.createElement('div')
+  cubesView.className = 'ic-cubes-view position-relative'
+  contributionsWrapper.append(cubesView)
 
   const canvas = document.createElement('canvas')
   canvas.id = 'isometric-contributions'
   canvas.width = 1000
   canvas.height = 600
   canvas.style.width = '100%'
-  contributionsWrapper.append(canvas)
+  cubesView.append(canvas)
 
   const legend = document.createElement('div')
   legend.className =
@@ -220,95 +278,111 @@ const initUI = () => {
   legend.innerHTML = `Less ${[0, 1, 2, 3, 4]
     .map((level) => `<span data-level="${level}"></span>`)
     .join('')} More`
-  contributionsWrapper.append(legend)
+  cubesView.append(legend)
 
-  // Inject toggle
-  const heading = contributionsBox.querySelector('h2')
+  const lineView = document.createElement('div')
+  lineView.className = 'ic-line-view'
+  contributionsWrapper.append(lineView)
 
-  const settingsMenu = contributionsBox.querySelector(
-    'focus-group, details.contrib-settings'
-  )
-
-  const wrapper = document.createElement('div')
-  wrapper.className = 'd-flex flex-items-center gap-2 float-right'
-
-  const buttonGroup = document.createElement('div')
-  buttonGroup.className = 'BtnGroup'
-
-  const squaresButton = document.createElement('button')
-  squaresButton.textContent = '2D'
-  squaresButton.className =
-    'ic-toggle-option squares btn BtnGroup-item btn-sm py-0 px-1'
-  squaresButton.dataset.icOption = 'squares'
-  squaresButton.addEventListener('click', handleViewToggle)
-  if (toggleSetting === 'squares') {
-    squaresButton.classList.add('selected')
-  }
-
-  const cubesButton = document.createElement('button')
-  cubesButton.textContent = '3D'
-  cubesButton.className =
-    'ic-toggle-option cubes btn BtnGroup-item btn-sm py-0 px-1'
-  cubesButton.dataset.icOption = 'cubes'
-  cubesButton.addEventListener('click', handleViewToggle)
-  if (toggleSetting === 'cubes') {
-    cubesButton.classList.add('selected')
-  }
-
-  const bothButton = document.createElement('button')
-  bothButton.textContent = 'Both'
-  bothButton.className =
-    'ic-toggle-option both btn BtnGroup-item btn-sm py-0 px-1'
-  bothButton.dataset.icOption = 'both'
-  bothButton.addEventListener('click', handleViewToggle)
-  if (toggleSetting === 'both') {
-    bothButton.classList.add('selected')
-  }
-
-  buttonGroup.append(squaresButton)
-  buttonGroup.append(cubesButton)
-  buttonGroup.append(bothButton)
-
-  if (settingsMenu) {
-    settingsMenu.before(wrapper)
-    wrapper.append(settingsMenu)
-    wrapper.append(buttonGroup)
-  } else {
-    wrapper.append(buttonGroup)
-    heading.before(wrapper)
-  }
-
-  setContainerViewType(toggleSetting)
+  applyViews(contributionsBox, views)
 }
 
-const handleViewToggle = (event) => {
-  setContainerViewType(event.target.dataset.icOption)
+const visibleDays = () =>
+  days.filter((day) => day.date.getTime() <= lastDay.getTime())
 
-  for (const toggle of document.querySelectorAll('.ic-toggle-option')) {
-    toggle.classList.remove('selected')
+const renderLineView = () => {
+  const container = document.querySelector('.ic-line-view')
+  if (!container || !views.includes('line')) return
+  renderTrendChart(container, buildTrendSeries(visibleDays(), lineHistory), {
+    mode: lineMode,
+    comparison: lineComparison,
+    endsToday: isToday(lastDay),
+    onModeChange: (mode) => {
+      lineMode = mode
+      persistSetting('lineMode', mode)
+      renderLineView()
+    }
+  })
+  if (!lineResizeObserver && typeof ResizeObserver === 'function') {
+    let width = container.clientWidth
+    lineResizeObserver = new ResizeObserver(() => {
+      if (container.clientWidth === width) return
+      width = container.clientWidth
+      renderLineView()
+    })
+    lineResizeObserver.observe(container)
   }
-
-  event.target.classList.add('selected')
-
-  persistSetting('toggleSetting', event.target.dataset.icOption)
-  toggleSetting = event.target.dataset.icOption
 }
 
-const setContainerViewType = (type) => {
-  applyViewType(contributionsBox, type)
+const loadLineComparison = async () => {
+  if (lineRequest || lineComparison !== 'loading') return
+  const username = getProfileUsername()
+  const generation = chartGeneration
+  const sourceDays = days
+  const controller = new AbortController()
+  lineRequest = controller
+  const { start, end } = comparisonRange(visibleDays())
+  let history = null
+  try {
+    history = await fetchContributionRange(
+      username,
+      start,
+      end,
+      controller.signal
+    )
+  } catch {
+    // The chart still works without the comparison line.
+  }
+  if (
+    controller.signal.aborted ||
+    generation !== chartGeneration ||
+    sourceDays !== days
+  ) {
+    return
+  }
+  lineRequest = null
+  lineHistory = history
+  lineComparison = history ? 'ready' : 'unavailable'
+  renderLineView()
+}
+
+const showLineView = () => {
+  if (!views.includes('line') || !document.querySelector('.ic-line-view'))
+    return
+  renderLineView()
+  loadLineComparison()
+}
+
+const setViews = (nextViews) => {
+  views = nextViews
+  if (!contributionsBox?.isConnected) return
+  applyViews(contributionsBox, views)
+  if (cubesStale) renderCubes()
+  showLineView()
 }
 
 const getSquareColor = (rect) =>
   palette.levels[Number(rect.dataset.level)]?.slice(1) ?? getElementColor(rect)
 
+// The activity timeline and year list sit outside the contributions box and
+// can load after it, so they are themed separately on each page change.
 const themeContributionActivity = () => {
+  if (!palette) return
   const activity = document.getElementById('js-contribution-activity')
-  if (!activity || !palette) return
-  activity.classList.add('ic-activity-themed')
-  applyContributionPalette(activity, palette)
+  if (activity) {
+    activity.classList.add('ic-activity-themed')
+    applyContributionPalette(activity, palette)
+  }
+  themeYearList(palette)
 }
 
+// What the current palette was built from, to skip redundant redraws.
+let themeKey = null
+const currentThemeKey = () =>
+  `${contributionColor}:${isDarkTheme(document.documentElement, colorScheme.matches)}`
+
 const applyTheme = () => {
+  themeKey = currentThemeKey()
   palette = createContributionPalette(
     contributionColor,
     isDarkTheme(document.documentElement, colorScheme.matches)
@@ -358,8 +432,7 @@ const loadStats = () => {
   const currentWeekDays = weeks.at(-1)
 
   firstDay = days[0].date
-  lastDay =
-    days.find((d) => sameDay(d.date, new Date()))?.date ?? days.at(-1).date
+  lastDay = days.find((d) => isToday(d.date))?.date ?? days.at(-1).date
 
   // Calculate streaks using pure function
   const stats = calculateStreaks(days)
@@ -371,7 +444,15 @@ const loadStats = () => {
 
   const firstDate = firstDay.toISOString().slice(0, 10)
   const canFetchHistoricalData = Boolean(getProfileUsername())
-  longestStreakLoading = canFetchHistoricalData && days[0].count > 0
+  const finalDay = days.at(-1)
+  extendBackward = canFetchHistoricalData && days[0].count > 0
+  // Only a past period can continue after its last day.
+  extendForward =
+    canFetchHistoricalData &&
+    finalDay.date === lastDay &&
+    finalDay.count > 0 &&
+    finalDay.date.toISOString().slice(0, 10) < localDateKey()
+  longestStreakLoading = extendBackward || extendForward
   currentStreakLoading =
     canFetchHistoricalData &&
     stats.currentStreakStart?.toISOString().slice(0, 10) === firstDate
@@ -440,6 +521,9 @@ const renderIsometricChart = () => {
   const pixelView = new obelisk.PixelView(canvas, point)
   pixelView.clear()
 
+  // Building a cube is the expensive part of a render, and many days share
+  // a height and color (every empty day, for example).
+  const cubes = new Map()
   let transform = GH_OFFSET
 
   for (const w of weeks) {
@@ -456,15 +540,26 @@ const renderIsometricChart = () => {
         MAX_HEIGHT
       )
 
-      const dimension = new obelisk.CubeDimension(SIZE, SIZE, cubeHeight)
-      const color = new obelisk.CubeColor().getByHorizontalColor(
-        Number.parseInt(d.color, 16)
-      )
-      const cube = new obelisk.Cube(dimension, color, false)
+      const key = `${cubeHeight}:${d.color}`
+      let cube = cubes.get(key)
+      if (!cube) {
+        const dimension = new obelisk.CubeDimension(SIZE, SIZE, cubeHeight)
+        const color = new obelisk.CubeColor().getByHorizontalColor(
+          Number.parseInt(d.color, 16)
+        )
+        cube = new obelisk.Cube(dimension, color, false)
+        cubes.set(key, cube)
+      }
       const p3d = new obelisk.Point3D(SIZE * x, SIZE * y, 0)
       pixelView.renderObject(cube, p3d)
     }
   }
+}
+
+// A hidden 3D view is redrawn when it is shown again, not on every change.
+const renderCubes = () => {
+  cubesStale = !views.includes('cubes')
+  if (!cubesStale) renderIsometricChart()
 }
 
 const renderCharts = () => {
@@ -475,12 +570,12 @@ const renderCharts = () => {
     heightScale,
     palette.levels
   )
-  renderIsometricChart()
+  renderCubes()
 }
 
 const renderStats = () => {
-  const graphHeaderText = document.querySelector('.ic-contributions-wrapper')
-    .parentNode.previousElementSibling.textContent
+  const graphHeaderText =
+    document.querySelector('.js-yearly-contributions h2')?.textContent ?? ''
   const viewingYear = /in \d{4}/.test(graphHeaderText)
 
   const contributionsStats = {
@@ -510,13 +605,14 @@ const renderStats = () => {
     loadingCurrent: currentStreakLoading
   })
 
+  const cubesView = document.querySelector('.ic-cubes-view')
   const icStatsBlockTop = document.createElement('div')
   icStatsBlockTop.innerHTML = topMarkup
-  document.querySelector('.ic-contributions-wrapper').append(icStatsBlockTop)
+  cubesView.append(icStatsBlockTop)
 
   const icStatsBlockBottom = document.createElement('div')
   icStatsBlockBottom.innerHTML = bottomMarkup
-  document.querySelector('.ic-contributions-wrapper').append(icStatsBlockBottom)
+  cubesView.append(icStatsBlockBottom)
 }
 
 const generateIsometricChart = () => {
@@ -530,12 +626,15 @@ const generateIsometricChart = () => {
   loadStats()
   renderStats()
   renderCharts()
+  showLineView()
+  restorePastYearScroll()
 
   extendStreakDataAndUpdate()
 }
 
 ;(async () => {
   const initIfReady = () => {
+    addPastYearLinks()
     themeContributionActivity()
     const graph = document.querySelector('.js-calendar-graph')
     if (!graph || document.querySelector('.ic-contributions-wrapper')) return
@@ -559,13 +658,23 @@ const generateIsometricChart = () => {
     }
 
     document.querySelector('.ic-contributions-wrapper')?.remove()
-    document.querySelector('.ic-toggle-option')?.parentElement?.remove()
 
     initIfReady()
 
     observer?.disconnect()
     const target = document.querySelector('main') || document.body
-    observer = new MutationObserver(() => initIfReady())
+    // Skip batches made entirely inside the extension's own charts (such as
+    // the line tooltip updating on every pointer move).
+    observer = new MutationObserver((records) => {
+      const ownChanges = records?.every((record) => {
+        const node =
+          record.target.nodeType === Node.ELEMENT_NODE
+            ? record.target
+            : record.target.parentElement
+        return node?.closest('.ic-contributions-wrapper')
+      })
+      if (!ownChanges) initIfReady()
+    })
     observer.observe(target, {
       childList: true,
       characterData: true,
@@ -588,6 +697,16 @@ const generateIsometricChart = () => {
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return
+      if (changes.views) {
+        setViews(normalizeViews(changes.views.newValue, legacyToggle))
+      }
+      if (changes.lineMode) {
+        const nextMode = normalizeLineMode(changes.lineMode.newValue)
+        if (nextMode !== lineMode) {
+          lineMode = nextMode
+          renderLineView()
+        }
+      }
       const nextScale = changes.heightScale
         ? normalizeHeightScale(changes.heightScale.newValue)
         : heightScale
@@ -611,9 +730,12 @@ const generateIsometricChart = () => {
   setupObserver()
   document.addEventListener('turbo:load', setupObserver)
   document.addEventListener('visibilitychange', () => {
+    // Storage and theme changes already redraw while hidden; only redraw on
+    // return if the palette inputs changed without an event.
     if (
       document.visibilityState === 'visible' &&
-      document.querySelector('.ic-contributions-wrapper')
+      document.querySelector('.ic-contributions-wrapper') &&
+      currentThemeKey() !== themeKey
     ) {
       refreshTheme()
     }

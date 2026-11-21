@@ -5,6 +5,8 @@ import {
   contributionIntensity,
   datesDayDifference,
   getContributionCount,
+  isToday,
+  localDateKey,
   precisionRound,
   rgbToHex,
   sameDay
@@ -375,5 +377,62 @@ describe('calculateStreaks', () => {
     expect(result.streakLongest).toBe(2)
     // Should take the later streak (Jan 4-5)
     expect(result.longestStreakEnd.toISOString()).toContain('2024-01-05')
+  })
+})
+
+describe('isToday', () => {
+  // Calendar days are parsed as UTC midnight; "now" is the viewer's local time.
+  it('matches the viewer’s local date regardless of timezone offset', () => {
+    const lateEvening = new Date(2026, 10, 21, 23, 30)
+    const earlyMorning = new Date(2026, 10, 21, 0, 15)
+    expect(localDateKey(lateEvening)).toBe('2026-11-21')
+    for (const now of [lateEvening, earlyMorning]) {
+      expect(isToday(new Date('2026-11-21'), now)).toBe(true)
+      expect(isToday(new Date('2026-11-20'), now)).toBe(false)
+      expect(isToday(new Date('2026-11-22'), now)).toBe(false)
+    }
+  })
+})
+
+describe('calculateStreaks with earlier history', () => {
+  const run = (start, length, count = 1) =>
+    Array.from({ length }, (_, i) => ({
+      date: new Date(Date.parse(start) + i * 86400000),
+      count
+    }))
+
+  it('ignores streaks that ended before the displayed period', () => {
+    const days = [
+      ...run('2025-03-01', 120),
+      ...run('2025-06-29', 1, 0),
+      ...run('2025-06-30', 140, 0),
+      ...run('2025-11-17', 5)
+    ]
+    const countFrom = new Date('2025-11-16')
+    expect(calculateStreaks(days).streakLongest).toBe(120)
+    const stats = calculateStreaks(days, { countFrom })
+    expect(stats.streakLongest).toBe(5)
+    expect(stats.longestStreakStart).toEqual(new Date('2025-11-17'))
+  })
+
+  it('ignores streaks that start after the displayed period', () => {
+    const days = [
+      ...run('2024-12-20', 15),
+      ...run('2025-01-04', 1, 0),
+      ...run('2025-01-05', 50)
+    ]
+    const stats = calculateStreaks(days, {
+      countFrom: new Date('2024-01-01'),
+      countUntil: new Date('2024-12-31')
+    })
+    expect(stats.streakLongest).toBe(15)
+    expect(stats.longestStreakEnd).toEqual(new Date('2025-01-03'))
+  })
+
+  it('keeps the full length of a streak that runs into the period', () => {
+    const days = [...run('2025-10-01', 60)]
+    const stats = calculateStreaks(days, { countFrom: new Date('2025-11-16') })
+    expect(stats.streakLongest).toBe(60)
+    expect(stats.longestStreakStart).toEqual(new Date('2025-10-01'))
   })
 })

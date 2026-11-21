@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  applyViewType,
+  applyViews,
   generateContributionsMarkup,
   generateStreaksMarkup,
   getElementColor,
@@ -13,44 +13,28 @@ import {
 } from './utils.js'
 
 // =============================================================================
-// 1. applyViewType - CSS class toggling
+// 1. applyViews - CSS class toggling
 // =============================================================================
 
-describe('applyViewType', () => {
+describe('applyViews', () => {
   let element
 
   beforeEach(() => {
     element = document.createElement('div')
   })
 
-  it('adds ic-squares class and removes ic-cubes for squares type', () => {
-    element.classList.add('ic-cubes')
-    applyViewType(element, 'squares')
-    expect(element.classList.contains('ic-squares')).toBe(true)
-    expect(element.classList.contains('ic-cubes')).toBe(false)
+  const viewClasses = () =>
+    [...element.classList].filter((name) => name.startsWith('ic-view'))
+
+  it('marks the element and each enabled view', () => {
+    applyViews(element, ['cubes', 'line'])
+    expect(viewClasses()).toEqual(['ic-views', 'ic-view-cubes', 'ic-view-line'])
   })
 
-  it('adds ic-cubes class and removes ic-squares for cubes type', () => {
-    element.classList.add('ic-squares')
-    applyViewType(element, 'cubes')
-    expect(element.classList.contains('ic-cubes')).toBe(true)
-    expect(element.classList.contains('ic-squares')).toBe(false)
-  })
-
-  it('adds ic-both class for both type', () => {
-    applyViewType(element, 'both')
-    expect(element.classList.contains('ic-both')).toBe(true)
-    expect(element.classList.contains('ic-squares')).toBe(false)
-    expect(element.classList.contains('ic-cubes')).toBe(false)
-  })
-
-  it('handles toggling from cubes to squares', () => {
-    applyViewType(element, 'cubes')
-    expect(element.classList.contains('ic-cubes')).toBe(true)
-
-    applyViewType(element, 'squares')
-    expect(element.classList.contains('ic-squares')).toBe(true)
-    expect(element.classList.contains('ic-cubes')).toBe(false)
+  it('removes views that are no longer enabled', () => {
+    applyViews(element, ['cubes', 'line', 'squares'])
+    applyViews(element, ['squares'])
+    expect(viewClasses()).toEqual(['ic-views', 'ic-view-squares'])
   })
 })
 

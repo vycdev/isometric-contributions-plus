@@ -27,7 +27,8 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-const selectedScale = () => document.querySelector('input:checked')?.value
+const selectedScale = () =>
+  document.querySelector('#height-scales input:checked')?.value
 const scaleFieldset = () =>
   document.getElementById('height-scales').closest('fieldset')
 
@@ -107,11 +108,20 @@ it('reports a loading error without overwriting the saved preference', async () 
   expect(set).not.toHaveBeenCalled()
 })
 
+// A discrete pick: the browser fires input, then change when it commits.
 const pickColor = (value) => {
   const input = document.getElementById('contribution-color')
   input.value = value
   input.dispatchEvent(new Event('input', { bubbles: true }))
+  input.dispatchEvent(new Event('change', { bubbles: true }))
 }
+const dragColor = (value) => {
+  const input = document.getElementById('contribution-color')
+  input.value = value
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+const savedColors = () =>
+  set.mock.calls.map(([settings]) => settings.contributionColor).filter(Boolean)
 
 it('loads a saved color, saves a new one, and resets only the color to blue', async () => {
   storedSettings.contributionColor = '#a120d0'
@@ -299,4 +309,158 @@ it('refreshes the palette preview and control accents when the system theme chan
   )
   expect(document.getElementById('contribution-color').value).toBe('#ffff00')
   expect(set).not.toHaveBeenCalled()
+})
+
+const viewInputs = () => [...document.querySelectorAll('#views input')]
+const checkedViews = () =>
+  viewInputs()
+    .filter((input) => input.checked)
+    .map((input) => input.value)
+
+it.each([
+  [undefined, undefined, ['cubes']],
+  [undefined, 'squares', ['squares']],
+  [undefined, 'both', ['cubes', 'squares']],
+  [['line', 'squares'], 'both', ['line', 'squares']],
+  [['unknown'], 'cubes', ['cubes']]
+])(
+  'loads views %j with the retired toggle %s as %j',
+  async (views, toggleSetting, expected) => {
+    Object.assign(storedSettings, { views, toggleSetting })
+    await import('./popup.js')
+    expect(get.mock.calls[0][0]).toEqual(
+      expect.arrayContaining(['views', 'toggleSetting'])
+    )
+    expect(viewInputs().map((input) => input.value)).toEqual([
+      'cubes',
+      'line',
+      'squares'
+    ])
+    expect(checkedViews()).toEqual(expected)
+    expect(set).not.toHaveBeenCalled()
+  }
+)
+
+it('saves any combination of views and keeps the last one enabled', async () => {
+  await import('./popup.js')
+  const [cubes, line, squares] = viewInputs()
+  cubes.click()
+  expect(cubes.checked).toBe(true)
+  expect(set).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="status"]').textContent).toBe(
+    'At least one view stays on.'
+  )
+  line.click()
+  expect(set).toHaveBeenLastCalledWith(
+    { views: ['cubes', 'line'] },
+    expect.any(Function)
+  )
+  squares.click()
+  expect(set).toHaveBeenLastCalledWith(
+    { views: ['cubes', 'line', 'squares'] },
+    expect.any(Function)
+  )
+  cubes.click()
+  line.click()
+  expect(set).toHaveBeenLastCalledWith(
+    { views: ['squares'] },
+    expect.any(Function)
+  )
+  expect(document.querySelector('[role="status"]').textContent).toContain(
+    'Saved'
+  )
+  squares.click()
+  expect(squares.checked).toBe(true)
+  expect(set).toHaveBeenCalledTimes(4)
+})
+
+it('restores the saved views after an unsuccessful save', async () => {
+  storedSettings.views = ['cubes', 'squares']
+  await import('./popup.js')
+  set.mockImplementation((_settings, callback) => {
+    runtime.lastError = { message: 'Storage unavailable' }
+    callback()
+    delete runtime.lastError
+  })
+  viewInputs()[1].click()
+  expect(checkedViews()).toEqual(['cubes', 'squares'])
+  expect(document.querySelector('[role="status"]').textContent).toContain(
+    'Could not save your views'
+  )
+})
+
+it('previews every color while dragging but saves at most once per interval', async () => {
+  vi.useFakeTimers()
+  try {
+    await import('./popup.js')
+    const shades = Array.from(
+      { length: 10 },
+      (_, i) => `#${(0xa00000 + i * 0x10).toString(16)}`
+    )
+    for (const shade of shades) dragColor(shade)
+    expect(savedColors()).toEqual([shades[0]])
+    expect(document.getElementById('color-value').value).toBe(shades[9])
+    expect(document.documentElement.style.getPropertyValue('--ic-accent')).toBe(
+      createContributionPalette(shades[9]).accent
+    )
+
+    vi.advanceTimersByTime(150)
+    expect(savedColors()).toEqual([shades[0], shades[9]])
+    vi.advanceTimersByTime(1000)
+    expect(savedColors()).toHaveLength(2)
+
+    // Releasing the picker saves the final color without waiting.
+    dragColor('#00aa00')
+    expect(savedColors()).toHaveLength(3)
+    dragColor('#00bb00')
+    document
+      .getElementById('contribution-color')
+      .dispatchEvent(new Event('change', { bubbles: true }))
+    expect(savedColors().at(-1)).toBe('#00bb00')
+    vi.advanceTimersByTime(1000)
+    expect(savedColors()).toHaveLength(4)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('drops a pending drag color when resetting to blue', async () => {
+  vi.useFakeTimers()
+  try {
+    await import('./popup.js')
+    dragColor('#aa0000')
+    dragColor('#bb0000')
+    document.getElementById('reset-color').click()
+    vi.advanceTimersByTime(1000)
+    expect(savedColors()).toEqual(['#aa0000', DEFAULT_CONTRIBUTION_COLOR])
+    expect(document.getElementById('contribution-color').value).toBe(
+      DEFAULT_CONTRIBUTION_COLOR
+    )
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('saves a pending drag color when the menu closes', async () => {
+  vi.useFakeTimers()
+  try {
+    await import('./popup.js')
+    dragColor('#aa0000')
+    dragColor('#bb0000')
+    window.dispatchEvent(new Event('pagehide'))
+    expect(savedColors()).toEqual(['#aa0000', '#bb0000'])
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('links to the project repository in a new tab', async () => {
+  await import('./popup.js')
+  const link = document.querySelector('header .repo-link')
+  expect(link.href).toBe(
+    'https://github.com/vycdev/isometric-contributions-plus'
+  )
+  expect(link.target).toBe('_blank')
+  expect(link.rel).toBe('noopener noreferrer')
+  expect(link.textContent.trim()).toBe('GitHub repository')
 })

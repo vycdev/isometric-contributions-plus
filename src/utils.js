@@ -90,6 +90,22 @@ export const datesDayDifference = (date1, date2) => {
  */
 export const sameDay = (d1, d2) => d1.toDateString() === d2.toDateString()
 
+/** The viewer's calendar date (local time) as YYYY-MM-DD. */
+export const localDateKey = (date = new Date()) =>
+  [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-')
+
+/**
+ * Whether a calendar day is the viewer's today. Calendar days are parsed from
+ * YYYY-MM-DD as UTC midnight, so compare their UTC date with the local date;
+ * comparing two local dates is off by a day for viewers west of UTC.
+ */
+export const isToday = (calendarDate, now = new Date()) =>
+  calendarDate.toISOString().slice(0, 10) === localDateKey(now)
+
 /**
  * Parse contribution count from GitHub tooltip text.
  * Handles formats like:
@@ -126,7 +142,10 @@ export const getContributionCount = (text, missingCount = 0) => {
  *   currentStreakEnd: Date|null
  * }}
  */
-export const calculateStreaks = (days) => {
+export const calculateStreaks = (
+  days,
+  { countFrom = null, countUntil = null } = {}
+) => {
   let yearTotal = 0
   let maxCount = 0
   let bestDay = null
@@ -154,7 +173,13 @@ export const calculateStreaks = (days) => {
 
       temporaryStreak++
 
-      if (temporaryStreak >= streakLongest) {
+      // With earlier history prepended, only streaks that reach the displayed
+      // period count; a streak that ended before it is not this period's.
+      // Likewise with later days appended: the streak must start by its end.
+      const reachesPeriod =
+        (!countFrom || d.date >= countFrom) &&
+        (!countUntil || temporaryStreakStart <= countUntil)
+      if (temporaryStreak >= streakLongest && reachesPeriod) {
         longestStreakStart = temporaryStreakStart
         longestStreakEnd = d.date
         streakLongest = temporaryStreak
@@ -169,7 +194,7 @@ export const calculateStreaks = (days) => {
   let streakCurrent = 0
   let currentStreakStart = null
   let currentStreakEnd = null
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
   const reversedDays = [...days]
     .filter((day) => day.date.toISOString().slice(0, 10) <= today)
     .reverse()
@@ -212,14 +237,16 @@ export const calculateStreaks = (days) => {
 // =============================================================================
 
 /**
- * Apply view type classes to a container element.
- * @param {Element} element - The container element
- * @param {string} type - View type ('squares', 'cubes', or 'both')
+ * Mark which views are visible. CSS hides the others only once the marker
+ * class is present, so GitHub's calendar stays visible until the extension runs.
+ * @param {Element} element - The contributions container
+ * @param {string[]} views - Enabled views ('squares', 'cubes', 'line')
  */
-export const applyViewType = (element, type) => {
-  element.classList.toggle('ic-squares', type === 'squares')
-  element.classList.toggle('ic-cubes', type === 'cubes')
-  element.classList.toggle('ic-both', type === 'both')
+export const applyViews = (element, views) => {
+  element.classList.add('ic-views')
+  for (const view of ['squares', 'cubes', 'line']) {
+    element.classList.toggle(`ic-view-${view}`, views.includes(view))
+  }
 }
 
 /**
@@ -255,17 +282,26 @@ export const parseCalendarGraph = (
     elementId: d.id
   }))
 
-  const tooltipNodes = [...tooltipElements].map((t) => ({
-    tid: t.id,
-    target: t.getAttribute('for'),
-    count: getContributionCount(t.textContent, null)
-  }))
+  // Index tooltips once: matching each day by scanning every tooltip is
+  // quadratic, and this runs on page mutations until the chart is built.
+  const byId = new Map()
+  const byTarget = new Map()
+  for (const t of tooltipElements) {
+    const node = {
+      tid: t.id,
+      target: t.getAttribute('for'),
+      count: getContributionCount(t.textContent, null)
+    }
+    if (node.tid && !byId.has(node.tid)) byId.set(node.tid, node)
+    if (node.target && !byTarget.has(node.target)) {
+      byTarget.set(node.target, node)
+    }
+  }
 
   const data = dayNodes.map((d) => ({
     ...d,
-    ...tooltipNodes.find(
-      (t) => t.tid === d.tid || (d.elementId && t.target === d.elementId)
-    )
+    ...((d.tid && byId.get(d.tid)) ||
+      (d.elementId && byTarget.get(d.elementId)))
   }))
 
   return data.sort((a, b) => a.date.getTime() - b.date.getTime())
@@ -279,6 +315,13 @@ export const parseContributionsHtml = (html) => {
     'td.ContributionCalendar-day[data-date]'
   )
   const days = []
+  // Current GitHub markup links each tooltip to its day with for="<day id>".
+  const tooltipsByDay = new Map(
+    [...doc.querySelectorAll('tool-tip[for]')].map((tooltip) => [
+      tooltip.getAttribute('for'),
+      tooltip
+    ])
+  )
 
   for (const el of dayElements) {
     const dateStr = el.dataset.date
@@ -291,11 +334,10 @@ export const parseContributionsHtml = (html) => {
     let count = 0
 
     const tid = el.getAttribute('aria-labelledby')
-    if (tid) {
-      const tooltip = doc.getElementById(tid)
-      if (tooltip) {
-        count = getContributionCount(tooltip.textContent)
-      }
+    const tooltip =
+      (tid && doc.getElementById(tid)) || (el.id && tooltipsByDay.get(el.id))
+    if (tooltip) {
+      count = getContributionCount(tooltip.textContent)
     }
 
     if (count === 0 && level > 0) {

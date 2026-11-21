@@ -60,6 +60,17 @@ describe.each([false, true])('palette in dark mode = %s', (dark) => {
       expect(shade).toMatch(/^#[\da-f]{6}$/)
     }
   })
+
+  it.each(['#0969da', '#ff0000', '#ffff00', '#00ff00', '#000000', '#ffffff'])(
+    'keeps white text readable on the emphasis fill for %s',
+    (color) => {
+      const { emphasis } = createContributionPalette(color, dark)
+      expect(emphasis).toMatch(/^#[\da-f]{6}$/)
+      expect(
+        contrast(luminance('#ffffff'), luminance(emphasis))
+      ).toBeGreaterThan(4.5)
+    }
+  )
 })
 
 it('uses GitHub’s explicit appearance before the system preference', () => {
@@ -67,4 +78,20 @@ it('uses GitHub’s explicit appearance before the system preference', () => {
   expect(isDarkTheme({ dataset: { colorMode: 'dark' } }, false)).toBe(true)
   expect(isDarkTheme({ dataset: { colorMode: 'auto' } }, true)).toBe(true)
   expect(isDarkTheme({ dataset: {} }, false)).toBe(false)
+  // The active slot's theme name wins: a light theme can be the night theme.
+  const sync = {
+    colorMode: 'auto',
+    lightTheme: 'light',
+    darkTheme: 'light_high_contrast'
+  }
+  expect(isDarkTheme({ dataset: sync }, true)).toBe(false)
+  expect(
+    isDarkTheme({ dataset: { ...sync, darkTheme: 'dark_dimmed' } }, true)
+  ).toBe(true)
+  expect(
+    isDarkTheme(
+      { dataset: { colorMode: 'dark', darkTheme: 'dark_tritanopia' } },
+      false
+    )
+  ).toBe(true)
 })

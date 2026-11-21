@@ -1,14 +1,23 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { intensityColor } from './calendar.js'
-import { fetchExtendedStreakData } from './history.js'
+import {
+  fetchContributionRange,
+  fetchExtendedStreakData,
+  fetchFollowingStreakData
+} from './history.js'
 import {
   createContributionPalette,
   DEFAULT_CONTRIBUTION_COLOR
 } from './palette.js'
 import { contributionIntensity } from './utils.js'
 
-vi.mock('./history.js', () => ({ fetchExtendedStreakData: vi.fn() }))
+vi.mock('./history.js', () => ({
+  fetchContributionRange: vi.fn(),
+  fetchExtendedStreakData: vi.fn(),
+  // By default nothing follows the visible period.
+  fetchFollowingStreakData: vi.fn(async (_username, days) => days)
+}))
 
 const NativeMutationObserver = globalThis.MutationObserver
 const nativeObservers = []
@@ -67,6 +76,8 @@ const clearChart = vi.fn(() => {
 
 beforeEach(() => {
   vi.resetModules()
+  renderedHeights.length = 0
+  renderedColors.length = 0
   onNavigate = null
   onThemeChange = null
   onSystemThemeChange = null
@@ -160,6 +171,16 @@ const expectedColors = (scale, counts = [0, 10, 609], stops = palette) =>
       stops
     )
   )
+
+const LEGACY_VIEWS = {
+  squares: ['squares'],
+  cubes: ['cubes'],
+  both: ['cubes', 'squares']
+}
+const enabledViews = () =>
+  [...document.querySelector('.js-yearly-contributions').classList]
+    .filter((name) => name.startsWith('ic-view-'))
+    .map((name) => name.slice('ic-view-'.length))
 
 const mockChromeStorage = (settings = {}) => {
   let onChanged
@@ -299,18 +320,14 @@ it.each([
         .getElementById('isometric-contributions')
         .getAttribute('aria-label')
     ).toContain(scale.replace('-', ' '))
-    expect(
-      document.querySelector('.js-yearly-contributions').classList
-    ).toContain('ic-both')
+    expect(enabledViews()).toEqual(['squares', 'cubes'])
 
     window.history.replaceState(null, '', '/new-profile')
     showCalendar(outlierCalendar())
     onNavigate()
     expect(renderedHeights).toEqual(heights)
     expect(calendarColors()).toEqual(expectedColors(scale))
-    expect(
-      document.querySelector('.js-yearly-contributions').classList
-    ).toContain('ic-both')
+    expect(enabledViews()).toEqual(['squares', 'cubes'])
   }
 )
 
@@ -325,11 +342,10 @@ it.each(['squares', 'both'])(
     )
     notify({ heightScale: { newValue: 'logarithmic' } })
     expect(calendarColors()).toEqual(expectedColors('logarithmic'))
-    expect(
-      document.querySelector('.js-yearly-contributions').classList
-    ).toContain(`ic-${view}`)
-    for (const mode of ['cubes', 'squares', 'both']) {
-      document.querySelector(`[data-ic-option="${mode}"]`).click()
+    expect(enabledViews().sort()).toEqual([...LEGACY_VIEWS[view]].sort())
+    for (const views of [['cubes'], ['squares'], ['cubes', 'squares']]) {
+      notify({ views: { newValue: views } })
+      expect(enabledViews().sort()).toEqual([...views].sort())
       expect(calendarColors()).toEqual(expectedColors('logarithmic'))
     }
   }
@@ -499,7 +515,12 @@ it('remembers changes made while no chart is present for the next profile', asyn
   expect(renderedHeights).toEqual([3, 40, 103])
 })
 
-const expectPalette = (color, dark = false, scale = 'linear') => {
+const expectPalette = (
+  color,
+  dark = false,
+  scale = 'linear',
+  cubesShown = true
+) => {
   const palette = createContributionPalette(color, dark)
   const box = document.querySelector('.js-yearly-contributions')
   palette.levels.forEach((shade, level) => {
@@ -512,6 +533,7 @@ const expectPalette = (color, dark = false, scale = 'linear') => {
   expect(calendarColors()).toEqual(
     expectedColors(scale, undefined, palette.levels)
   )
+  if (!cubesShown) return
   expect(renderedColors).toEqual(
     [0, 2, 3].map((level) =>
       Number.parseInt(palette.levels[level].slice(1), 16)
@@ -538,15 +560,20 @@ it.each(
     const originalActivity = document.getElementById(
       'js-contribution-activity'
     ).innerHTML
+    const cubesShown = view !== 'squares'
     await import('./iso.js')
-    await vi.waitFor(() => expect(renderedColors).toHaveLength(3))
-    expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale)
+    await vi.waitFor(() =>
+      expect(calendarColors()).toEqual(expectedColors(scale))
+    )
+    // A hidden 3D view is not drawn at all.
+    expect(renderedColors).toHaveLength(cubesShown ? 3 : 0)
+    expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale, cubesShown)
     const originalHeights = [...renderedHeights]
     const originalStats = document.querySelector(
       '.ic-contributions-wrapper'
     ).textContent
     notify({ contributionColor: { newValue: '#d040a0' } })
-    expectPalette('#d040a0', false, scale)
+    expectPalette('#d040a0', false, scale, cubesShown)
     expect(document.getElementById('user-activity-overview').innerHTML).toBe(
       originalOverview
     )
@@ -558,11 +585,25 @@ it.each(
     expect(
       document.querySelector('.ic-contributions-wrapper').textContent
     ).toBe(originalStats)
-    expect(
-      document.querySelector('.js-yearly-contributions').classList
-    ).toContain(`ic-${view}`)
+    expect(enabledViews().sort()).toEqual([...LEGACY_VIEWS[view]].sort())
     notify({ contributionColor: { oldValue: '#d040a0' } })
-    expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale)
+    expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale, cubesShown)
+    if (!cubesShown) {
+      expect(renderedColors).toHaveLength(0)
+      // Showing the 3D view draws it once, with the current color and scale.
+      notify({ views: { newValue: ['cubes', 'squares'] } })
+      expectPalette(DEFAULT_CONTRIBUTION_COLOR, false, scale)
+      expect(renderedHeights).toEqual(
+        ['linear', 'square-root', 'logarithmic'].includes(scale)
+          ? {
+              linear: [3, 4, 103],
+              'square-root': [3, 15, 103],
+              logarithmic: [3, 40, 103]
+            }[scale]
+          : []
+      )
+      expect(clearChart).toHaveBeenCalledTimes(1)
+    }
     expect(document.getElementById('user-activity-overview').innerHTML).toBe(
       originalOverview
     )
@@ -737,6 +778,52 @@ it('extends a shorter boundary streak that can exceed the visible longest', asyn
   )
 })
 
+it('continues a streak past the end of a past period', async () => {
+  // The period ends on an active day: 10 days so far, 30 more in the next year.
+  const current = boundaryCalendar(false)
+  const following = Array.from({ length: 30 }, (_, i) => ({
+    date: new Date(Date.UTC(2024, 0, 21 + i)),
+    count: 1
+  }))
+  // A longer streak entirely after the period does not belong to it.
+  const later = Array.from({ length: 60 }, (_, i) => ({
+    date: new Date(Date.UTC(2024, 1, 21 + i)),
+    count: 1
+  }))
+  showCalendar(current)
+  fetchFollowingStreakData.mockImplementationOnce(async (_user, days) => [
+    ...days,
+    ...following,
+    { date: new Date(Date.UTC(2024, 1, 20)), count: 0 },
+    ...later
+  ])
+  await import('./iso.js')
+  await vi.waitFor(() =>
+    expect(document.getElementById('ic-streak-longest-count').textContent).toBe(
+      '40 days'
+    )
+  )
+  expect(fetchFollowingStreakData).toHaveBeenCalledTimes(1)
+  expect(fetchExtendedStreakData).not.toHaveBeenCalled()
+  expect(document.getElementById('ic-streak-longest-dates').textContent).toBe(
+    'Jan 11 → Feb 19'
+  )
+})
+
+it('does not look past today for the current period', async () => {
+  const today = new Date()
+  const key = (offset) =>
+    new Date(
+      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - offset)
+    )
+      .toISOString()
+      .slice(0, 10)
+  showCalendar([day(key(2), 0), day(key(1), 1), day(key(0), 1)])
+  await import('./iso.js')
+  await vi.waitFor(() => expect(renderedHeights.length).toBeGreaterThan(0))
+  expect(fetchFollowingStreakData).not.toHaveBeenCalled()
+})
+
 it('skips historical requests when the first visible day is inactive', async () => {
   showCalendar(boundaryCalendar(false))
   await import('./iso.js')
@@ -746,4 +833,175 @@ it('skips historical requests when the first visible day is inactive', async () 
     )
   )
   expect(fetchExtendedStreakData).not.toHaveBeenCalled()
+})
+
+const lineHistory = (days) => {
+  const first = days[0].date.getTime()
+  return Array.from({ length: 391 }, (_, index) => ({
+    date: new Date(first - (391 - index) * 86400000),
+    count: 2
+  }))
+}
+const deferred = () => {
+  let resolve
+  let reject
+  const promise = new Promise((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+const lineView = () => document.querySelector('.ic-line-view')
+const lineStats = () =>
+  lineView().querySelector('.ic-line-stats').textContent.replace(/\s+/g, ' ')
+
+it('shows the line view with the year before once it loads', async () => {
+  const request = deferred()
+  fetchContributionRange.mockReturnValue(request.promise)
+  mockChromeStorage({ views: ['line'] })
+  const days = outlierCalendar()
+  showCalendar(days)
+  await import('./iso.js')
+  await vi.waitFor(() => expect(lineView().querySelector('svg')).not.toBeNull())
+  expect(enabledViews()).toEqual(['line'])
+  expect(fetchContributionRange).toHaveBeenCalledTimes(1)
+  const [username, start, end] = fetchContributionRange.mock.calls[0]
+  expect(username).toBe('old-profile')
+  expect(start.toISOString().slice(0, 10)).toBe('2022-12-06')
+  expect(end.toISOString().slice(0, 10)).toBe('2023-12-31')
+  expect(lineView().querySelector('.ic-line-previous')).toBeNull()
+  expect(lineStats()).toContain('Loading the year before')
+
+  request.resolve(lineHistory(days))
+  await vi.waitFor(() =>
+    expect(lineView().querySelector('.ic-line-previous')).not.toBeNull()
+  )
+  expect(lineStats()).toContain('619 vs 6 the year before')
+  // The 3D view keeps its statistics; they are hidden with it.
+  expect(document.querySelector('.ic-cubes-view .position-absolute')).not.toBe(
+    null
+  )
+})
+
+it('keeps the line view working when the year before cannot load', async () => {
+  fetchContributionRange.mockRejectedValue(new Error('offline'))
+  mockChromeStorage({ views: ['line', 'squares'] })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() =>
+    expect(lineStats()).toContain('The year before is unavailable')
+  )
+  expect(enabledViews()).toEqual(['squares', 'line'])
+})
+
+it('switches the line measure and remembers it', async () => {
+  fetchContributionRange.mockResolvedValue(null)
+  const notify = mockChromeStorage({ views: ['line'] })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() => expect(lineView().querySelector('svg')).not.toBeNull())
+  lineView().querySelector('[data-ic-line-mode="cumulative"]').click()
+  expect(chrome.storage.local.set).toHaveBeenCalledWith({
+    lineMode: 'cumulative'
+  })
+  expect(lineView().querySelector('.ic-line-area')).not.toBeNull()
+  notify({ lineMode: { newValue: 'activity' } })
+  expect(lineView().querySelector('.ic-line-area')).toBeNull()
+  expect(lineView().querySelector('.ic-line-bar')).not.toBeNull()
+})
+
+it('loads the line view only once it is turned on, and only once', async () => {
+  fetchContributionRange.mockResolvedValue(null)
+  const notify = mockChromeStorage({ lineMode: 'cumulative' })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() => expect(renderedHeights).toHaveLength(3))
+  expect(enabledViews()).toEqual(['cubes'])
+  expect(lineView().childElementCount).toBe(0)
+  expect(fetchContributionRange).not.toHaveBeenCalled()
+
+  notify({ views: { newValue: ['cubes', 'line'] } })
+  expect(enabledViews()).toEqual(['cubes', 'line'])
+  expect(lineView().querySelector('.ic-line-area')).not.toBeNull()
+  await vi.waitFor(() => expect(lineStats()).toContain('unavailable'))
+  notify({ views: { newValue: ['squares'] } })
+  expect(enabledViews()).toEqual(['squares'])
+  notify({ views: { newValue: ['line'] } })
+  expect(fetchContributionRange).toHaveBeenCalledTimes(1)
+  notify({ views: { newValue: [] } })
+  expect(enabledViews()).toEqual(['cubes'])
+})
+
+it('ignores a comparison that finishes after navigating to another profile', async () => {
+  const first = deferred()
+  fetchContributionRange.mockReturnValueOnce(first.promise)
+  fetchContributionRange.mockReturnValueOnce(new Promise(() => {}))
+  mockChromeStorage({ views: ['line'] })
+  const days = outlierCalendar()
+  showCalendar(days)
+  await import('./iso.js')
+  await vi.waitFor(() =>
+    expect(fetchContributionRange).toHaveBeenCalledTimes(1)
+  )
+  expect(fetchContributionRange.mock.calls[0][3].aborted).toBe(false)
+
+  window.history.replaceState(null, '', '/new-profile')
+  showCalendar(days)
+  onNavigate()
+  expect(fetchContributionRange.mock.calls[0][3].aborted).toBe(true)
+  expect(fetchContributionRange).toHaveBeenCalledTimes(2)
+  expect(fetchContributionRange.mock.calls[1][0]).toBe('new-profile')
+  first.resolve(lineHistory(days))
+  await first.promise
+  await Promise.resolve()
+  expect(lineView().querySelector('.ic-line-previous')).toBeNull()
+  expect(lineStats()).toContain('Loading the year before')
+})
+
+it('themes the year list and adds Past year, including a list loaded later', async () => {
+  const notify = mockChromeStorage({ contributionColor: '#aa00cc' })
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() => expect(onPageMutation).toBeTypeOf('function'))
+  const years = document.createElement('div')
+  years.className = 'js-profile-timeline-year-list'
+  years.innerHTML =
+    '<ol class="filter-list"><li><a class="js-year-link filter-item selected" aria-current="true">2026</a></li><li><a class="js-year-link filter-item">2025</a></li></ol>'
+  document.querySelector('main').append(years)
+  document.querySelector('.js-yearly-contributions h2').textContent =
+    '619 contributions in the last year'
+  onPageMutation()
+  const css = () => document.getElementById('ic-year-list-theme').textContent
+  expect(css()).toContain(createContributionPalette('#aa00cc').emphasis)
+  // The default profile URL is the past-year view.
+  const pastYear = years.querySelector('.ic-past-year')
+  expect(pastYear.classList).toContain('selected')
+  expect(pastYear.getAttribute('href')).toBe('/old-profile')
+  // GitHub's year switching needs its selected year to stay marked.
+  expect(years.querySelector('.js-year-link.selected')).not.toBeNull()
+
+  notify({ contributionColor: { newValue: '#ee8800' } })
+  expect(css()).toContain(createContributionPalette('#ee8800').emphasis)
+  document.documentElement.dataset.colorMode = 'dark'
+  onThemeChange()
+  expect(css()).toContain(createContributionPalette('#ee8800', true).emphasis)
+  onPageMutation()
+  expect(years.querySelectorAll('.ic-past-year')).toHaveLength(1)
+})
+
+it('ignores page mutations made inside its own charts', async () => {
+  mockChromeStorage()
+  showCalendar(outlierCalendar())
+  await import('./iso.js')
+  await vi.waitFor(() => expect(onPageMutation).toBeTypeOf('function'))
+  const years = document.createElement('div')
+  years.className = 'js-profile-timeline-year-list'
+  years.innerHTML =
+    '<ol class="filter-list"><li><a class="js-year-link filter-item selected">2026</a></li></ol>'
+  document.querySelector('main').append(years)
+  const ownNode = document.querySelector('.ic-contributions-wrapper').firstChild
+  onPageMutation([{ target: ownNode }])
+  expect(years.querySelector('.ic-past-year')).toBeNull()
+  onPageMutation([{ target: ownNode }, { target: years }])
+  expect(years.querySelector('.ic-past-year')).not.toBeNull()
 })
