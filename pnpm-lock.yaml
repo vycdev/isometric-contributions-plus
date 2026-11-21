@@ -17,12 +17,6 @@ importers:
       '@parcel/config-webextension':
         specifier: ^2.16.4
         version: 2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))(@swc/helpers@0.5.17)
-      '@parcel/reporter-bundle-analyzer':
-        specifier: ^2.16.4
-        version: 2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))
-      '@parcel/reporter-bundle-buddy':
-        specifier: ^2.16.4
-        version: 2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))
       chrome-webstore-upload-cli:
         specifier: ^4.0.2
         version: 4.0.2
@@ -41,9 +35,6 @@ importers:
       web-ext:
         specifier: ^9.2.0
         version: 9.2.0
-      web-ext-submit:
-        specifier: ^7.8.0
-        version: 7.8.0
 
 packages:
 
@@ -439,14 +430,6 @@ packages:
   '@parcel/profiler@2.16.4':
     resolution: {integrity: sha512-R3JhfcnoReTv2sVFHPR2xKZvs3d3IRrBl9sWmAftbIJFwT4rU70/W7IdwfaJVkD/6PzHq9mcgOh1WKL4KAxPdA==}
     engines: {node: '>= 16.0.0'}
-
-  '@parcel/reporter-bundle-analyzer@2.16.4':
-    resolution: {integrity: sha512-uFwQbufcBkEuui2yhUcslhzlej4nF4yjxmB7MFg4CZzXIkVDI4mAmnx89G9wrlgJI85EhLU1df85GqoImeU1mA==}
-    engines: {node: '>= 16.0.0', parcel: ^2.16.4}
-
-  '@parcel/reporter-bundle-buddy@2.16.4':
-    resolution: {integrity: sha512-06GMKR1WBjDjcD6ol+kFYPqaPcHtQGpUH8A3L2nmksI5IWuhasK7z50G3IHKS2j1KMsjqZoE29SEiKhNkU+gjg==}
-    engines: {node: '>= 16.0.0', parcel: ^2.16.4}
 
   '@parcel/reporter-cli@2.16.4':
     resolution: {integrity: sha512-DQx9TwcTZrDv828+tcwEi//xyW7OHTGzGX1+UEVxPp0mSzuOmDn0zfER8qNIqGr1i4D/FXhb5UJQDhGHV8mOpQ==}
@@ -2479,11 +2462,6 @@ packages:
   weak-lru-cache@1.2.2:
     resolution: {integrity: sha512-DEAoo25RfSYMuTGc9vPJzZcZullwIqRDSI9LOy+fkCJPi6hykCnfKaXTuPBDuXAUcqHXyOgFtHNp/kB2FjYHbw==}
 
-  web-ext-submit@7.8.0:
-    resolution: {integrity: sha512-fHZKvbZXGea5fQMOdriRfsu61F3BNmYeZpxNH2BFP2cdP3fBGc2r9DJsLcId13mn9cZGCZvNSAp0tjzVAljRHw==}
-    engines: {node: '>=14.0.0', npm: '>=6.9.0'}
-    hasBin: true
-
   web-ext@9.2.0:
     resolution: {integrity: sha512-25xjkR/MaP7vbXyAWLYpMO6AnVvsxDXtxhSz9sev+OiM3MkDktnwFZNMq8l/J3gtmc9XAC9lJUgCppBwI/T0tw==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
@@ -3150,22 +3128,6 @@ snapshots:
       '@parcel/events': 2.16.4
       '@parcel/types-internal': 2.16.4
       chrome-trace-event: 1.0.4
-
-  '@parcel/reporter-bundle-analyzer@2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))':
-    dependencies:
-      '@parcel/plugin': 2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))
-      '@parcel/utils': 2.16.4
-      nullthrows: 1.1.1
-    transitivePeerDependencies:
-      - '@parcel/core'
-      - napi-wasm
-
-  '@parcel/reporter-bundle-buddy@2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))':
-    dependencies:
-      '@parcel/plugin': 2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))
-    transitivePeerDependencies:
-      - '@parcel/core'
-      - napi-wasm
 
   '@parcel/reporter-cli@2.16.4(@parcel/core@2.16.4(@swc/helpers@0.5.17))':
     dependencies:
@@ -5127,17 +5089,6 @@ snapshots:
       defaults: 1.0.4
 
   weak-lru-cache@1.2.2: {}
-
-  web-ext-submit@7.8.0:
-    dependencies:
-      web-ext: 9.2.0
-    transitivePeerDependencies:
-      - body-parser
-      - express
-      - jiti
-      - node-fetch
-      - safe-compare
-      - supports-color
 
   web-ext@9.2.0:
     dependencies:

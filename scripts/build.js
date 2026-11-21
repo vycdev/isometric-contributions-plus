@@ -42,12 +42,39 @@ function writeDistManifest(manifest) {
 function runParcelBuild() {
   console.log('Running Parcel build...')
   execFileSync(
-    ...pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json']),
+    ...pnpmCommand([
+      'exec',
+      'parcel',
+      'build',
+      'src/manifest.json',
+      // Inline source maps would ship to users and be parsed on every page.
+      '--no-source-maps'
+    ]),
     {
       cwd: rootDir,
       stdio: 'inherit'
     }
   )
+  restoreDependencyNotices()
+}
+
+// Minification drops the vendored library's MIT notice, which must ship with
+// every copy. (The Safari build restores it the same way.)
+function restoreDependencyNotices() {
+  const source = fs.readFileSync(
+    path.join(rootDir, 'src', 'obelisk.min.js'),
+    'utf8'
+  )
+  const notice = source.match(/^\/\*![\s\S]*?\*\//)?.[0]
+  if (!notice) throw new Error('obelisk.min.js has lost its license notice')
+  for (const file of fs.readdirSync(distDir)) {
+    if (!/^obelisk\.min\..*\.js$/.test(file)) continue
+    const target = path.join(distDir, file)
+    const content = fs.readFileSync(target, 'utf8')
+    if (!content.startsWith('/*!')) {
+      fs.writeFileSync(target, `${notice}\n${content}`)
+    }
+  }
 }
 
 function createZip(browser) {

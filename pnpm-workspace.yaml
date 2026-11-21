@@ -11,4 +11,5 @@ allowBuilds:
   lmdb: true
   msgpackr-extract: true
   puppeteer: true
-  spawn-sync: true
+  # Polyfill for Node < 0.12 pulled in by web-ext; Node has spawnSync built in.
+  spawn-sync: false

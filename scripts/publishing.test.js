@@ -50,6 +50,7 @@ function fixture(t) {
   fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}')
   for (const file of [
     'submit.js',
+    'submit-output.js',
     'pnpm.js',
     'publishing-config.js',
     'configure-safari.js'
@@ -95,8 +96,10 @@ function runSubmit(
   env.npm_execpath = path.join(dir, 'pnpm.cjs')
   const hook = `
     import cp from 'node:child_process';
+    import { EventEmitter } from 'node:events';
     import fs from 'node:fs';
     import { syncBuiltinESMExports } from 'node:module';
+    import { PassThrough } from 'node:stream';
     const calls = [];
     function record(call) {
       calls.push(call);
@@ -105,6 +108,21 @@ function runSubmit(
     cp.execFileSync = (command, args, options) => {
       if (!${intercept}) throw new Error('Unexpected external process');
       record({ command, args, publisher: options?.env?.PUBLISHER_ID });
+    };
+    // Store uploads stream their output through spawn; fake a successful run.
+    cp.spawn = (command, args, options) => {
+      if (!${intercept}) throw new Error('Unexpected external process');
+      record({ command, args, publisher: options?.env?.PUBLISHER_ID });
+      const child = new EventEmitter();
+      child.stdout = new PassThrough();
+      child.stderr = new PassThrough();
+      setImmediate(() => {
+        if (process.env.FAKE_UPLOAD_OUTPUT) {
+          child.stderr.write(process.env.FAKE_UPLOAD_OUTPUT);
+        }
+        child.emit('close', Number(process.env.FAKE_UPLOAD_CODE ?? 0), null);
+      });
+      return child;
     };
     syncBuiltinESMExports();
     globalThis.fetch = async (url, options) => {
@@ -166,6 +184,10 @@ test('Firefox conversion preserves popup, permissions and homepage with the fork
   assert.equal(converted.manifest_version, 2)
   assert.equal(converted.name, EXTENSION_NAME)
   assert.equal(converted.browser_specific_settings.gecko.id, FIREFOX_ADDON_ID)
+  assert.equal(
+    converted.browser_specific_settings.gecko.strict_min_version,
+    '121.0'
+  )
   assert.deepEqual(converted.browser_action, original.action)
   assert.deepEqual(converted.permissions, [
     ...original.permissions,
@@ -318,6 +340,34 @@ test('submission forwards the configured Chrome publisher and Firefox listing', 
   assert.equal(calls[2].body.name['en-US'], EXTENSION_NAME)
 })
 
+test('a re-run skips a version the store already has but fails on other errors', (t) => {
+  const dir = fixture(t)
+  const alreadyPublished = runSubmit(
+    dir,
+    ['chrome'],
+    {
+      FAKE_UPLOAD_OUTPUT:
+        "{ uploadState: 'FAILURE', itemError: [ { error_code: 'PKG_INVALID_VERSION_NUMBER' } ] }",
+      FAKE_UPLOAD_CODE: '1'
+    },
+    true
+  )
+  assert.equal(alreadyPublished.status, 0, alreadyPublished.stderr)
+  assert.match(alreadyPublished.stdout, /Version already published to Chrome/)
+
+  const rejected = runSubmit(
+    dir,
+    ['chrome'],
+    {
+      FAKE_UPLOAD_OUTPUT: '❌ Request had invalid authentication credentials.',
+      FAKE_UPLOAD_CODE: '1'
+    },
+    true
+  )
+  assert.equal(rejected.status, 1)
+  assert.match(rejected.stderr, /Submission failed/)
+})
+
 test('Safari signing files keep profiles distinct, escape XML, and reject setting injection', (t) => {
   const dir = fixture(t)
   const { xcconfigPath, exportOptionsPath } = createSafariSigningFiles(
@@ -403,7 +453,7 @@ test('Safari resource sync refreshes manifest identity and resolves the copied p
     let content = '/* offline build fixture */'
     if (name === 'popup.html')
       content =
-        '<h1>Isometric Contributions Plus</h1><script src="/popup.testhash.js"></script><link href="/popup.testhash.css"><img src="/icon-48.testhash.png">'
+        '<h1>Isometric Contributions Plus</h1><a href="https://github.com/vycdev/isometric-contributions-plus">GitHub</a><a href="#views">Views</a><script src="/popup.testhash.js"></script><link href="/popup.testhash.css"><img src="/icon-48.testhash.png">'
     fs.writeFileSync(path.join(dir, 'dist', hashed), content)
   }
   fs.writeFileSync(path.join(dir, 'dist', 'manifest.json'), builtManifest)
@@ -435,6 +485,11 @@ test('Safari resource sync refreshes manifest identity and resolves the copied p
   )
   const popup = fs.readFileSync(path.join(resources, 'popup.html'), 'utf8')
   assert.doesNotMatch(popup, /testhash/)
+  // External links survive untouched rather than being treated as assets.
+  assert.match(
+    popup,
+    /href="https:\/\/github\.com\/vycdev\/isometric-contributions-plus"/
+  )
   for (const name of names)
     assert.ok(fs.existsSync(path.join(resources, name)), name)
   assert.match(

@@ -56,6 +56,8 @@ function syncResources() {
       'utf8'
     )
     for (const [, asset] of popup.matchAll(/\b(?:src|href)=["']?([^"' >]+)/g)) {
+      // External links (such as the repository link) are not bundled files.
+      if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(asset)) continue
       assets.add(asset.replace(/^\//, ''))
     }
   }
@@ -156,7 +158,14 @@ function buildXcode(configuration = 'Debug', signingFiles) {
 }
 
 function buildParcel() {
-  const command = pnpmCommand(['exec', 'parcel', 'build', 'src/manifest.json'])
+  const command = pnpmCommand([
+    'exec',
+    'parcel',
+    'build',
+    'src/manifest.json',
+    // Inline source maps would ship to users and be parsed on every page.
+    '--no-source-maps'
+  ])
   // Firefox packaging rewrites the output manifest. Clear it before Parcel
   // can reuse that cached output for Safari.
   fs.rmSync(distDir, { recursive: true, force: true })

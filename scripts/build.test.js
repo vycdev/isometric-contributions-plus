@@ -29,6 +29,19 @@ test('Safari resources include the popup after a Firefox build', () => {
     execFileSync(...pnpmCommand(['run', 'build:firefox']), { cwd: dir })
     const manifestFile = path.join(dir, 'dist/manifest.json')
     assert.equal(JSON.parse(fs.readFileSync(manifestFile)).manifest_version, 2)
+    // Bundles ship without source maps but keep the dependency's notice.
+    const scripts = fs
+      .readdirSync(path.join(dir, 'dist'))
+      .filter((file) => file.endsWith('.js'))
+    for (const file of scripts) {
+      const content = fs.readFileSync(path.join(dir, 'dist', file), 'utf8')
+      assert.doesNotMatch(content, /sourceMappingURL/, file)
+    }
+    const obelisk = scripts.find((file) => file.startsWith('obelisk.min.'))
+    assert.match(
+      fs.readFileSync(path.join(dir, 'dist', obelisk), 'utf8'),
+      /^\/\*!\r?\n \* obelisk\.js[\s\S]*?MIT licensed/
+    )
 
     execFileSync(...pnpmCommand(['run', 'build:safari', '--resources-only']), {
       cwd: dir

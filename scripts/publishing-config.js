@@ -46,6 +46,8 @@ export function requirePublishingConfig(target, env = process.env) {
   return Object.fromEntries(names.map((name) => [name, env[name]]))
 }
 
+export const FIREFOX_MIN_VERSION = '121.0'
+
 export function transformForFirefox(manifest) {
   const v2 = { ...manifest, manifest_version: 2 }
   if (v2.action) {
@@ -56,7 +58,10 @@ export function transformForFirefox(manifest) {
     v2.permissions = [...(v2.permissions || []), ...v2.host_permissions]
     delete v2.host_permissions
   }
-  v2.browser_specific_settings = { gecko: { id: FIREFOX_ADDON_ID } }
+  v2.browser_specific_settings = {
+    // CSS :has() (popup and year list styling) needs Firefox 121.
+    gecko: { id: FIREFOX_ADDON_ID, strict_min_version: FIREFOX_MIN_VERSION }
+  }
   return v2
 }
 

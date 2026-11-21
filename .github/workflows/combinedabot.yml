@@ -22,6 +22,11 @@ on:
         required: true
         default: 'nocombine'
 
+# Only what combining needs: push the combined branch and open its PR.
+permissions:
+  contents: write
+  pull-requests: write
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "combine-prs"
@@ -31,15 +36,25 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v9
         id: create-combined-pr
         name: Create Combined PR
+        # Inputs reach the script as data through the environment. Pasting them
+        # into the script source would let a quote in an input change the code.
+        env:
+          BRANCH_PREFIX: ${{ inputs.branchPrefix }}
+          MUST_BE_GREEN: ${{ inputs.mustBeGreen }}
+          COMBINE_BRANCH: ${{ inputs.combineBranchName }}
+          IGNORE_LABEL: ${{ inputs.ignoreLabel }}
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            const pulls = await github.paginate('GET /repos/:owner/:repo/pulls', {
+            const { BRANCH_PREFIX, MUST_BE_GREEN, COMBINE_BRANCH, IGNORE_LABEL } =
+              process.env;
+            const pulls = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
-              repo: context.repo.repo
+              repo: context.repo.repo,
+              state: 'open'
             });
             let branchesAndPRStrings = [];
             let baseBranch = null;
@@ -47,10 +62,10 @@ jobs:
             for (const pull of pulls) {
               const branch = pull['head']['ref'];
               console.log('Pull for branch: ' + branch);
-              if (branch.startsWith('${{ github.event.inputs.branchPrefix }}')) {
+              if (branch.startsWith(BRANCH_PREFIX)) {
                 console.log('Branch matched prefix: ' + branch);
                 let statusOK = true;
-                if(${{ github.event.inputs.mustBeGreen }}) {
+                if (MUST_BE_GREEN === 'true') {
                   console.log('Checking green status: ' + branch);
                   const stateQuery = `query($owner: String!, $repo: String!, $pull_number: Int!) {
                     repository(owner: $owner, name: $repo) {
@@ -86,7 +101,7 @@ jobs:
                 for(const label of labels) {
                   const labelName = label['name'];
                   console.log('Checking label: ' + labelName);
-                  if(labelName == '${{ github.event.inputs.ignoreLabel }}') {
+                  if (labelName === IGNORE_LABEL) {
                     console.log('Discarding ' + branch + ' with label ' + labelName);
                     statusOK = false;
                   }
@@ -108,7 +123,7 @@ jobs:
               await github.rest.git.createRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: 'refs/heads/' + '${{ github.event.inputs.combineBranchName }}',
+                ref: 'refs/heads/' + COMBINE_BRANCH,
                 sha: baseBranchSHA
               });
             } catch (error) {
@@ -124,7 +139,7 @@ jobs:
                 await github.rest.repos.merge({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  base: '${{ github.event.inputs.combineBranchName }}',
+                  base: COMBINE_BRANCH,
                   head: branch,
                 });
                 console.log('Merged branch ' + branch);
@@ -146,7 +161,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'Combined PR',
-              head: '${{ github.event.inputs.combineBranchName }}',
+              head: COMBINE_BRANCH,
               base: baseBranch,
               body: body
             });

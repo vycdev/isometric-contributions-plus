@@ -15,6 +15,7 @@ import {
   FIREFOX_ADDON_ID,
   requirePublishingConfig
 } from './publishing-config.js'
+import { isAlreadyPublished, runAndCapture } from './submit-output.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -191,9 +192,8 @@ async function submitChrome() {
   const args = ['chrome-webstore-upload', '--source', zipPath]
 
   try {
-    execFileSync(...pnpmCommand(['exec', ...args]), {
+    await runAndCapture(...pnpmCommand(['exec', ...args]), {
       cwd: rootDir,
-      stdio: 'inherit',
       env: {
         ...process.env,
         EXTENSION_ID: process.env.CHROME_EXTENSION_ID,
@@ -204,7 +204,7 @@ async function submitChrome() {
       }
     })
   } catch (error) {
-    if (error.message?.includes('PKG_INVALID_VERSION_NUMBER')) {
+    if (isAlreadyPublished('chrome', error)) {
       console.log(
         '\n⚠ Version already published to Chrome Web Store — skipping\n'
       )
@@ -251,9 +251,8 @@ async function submitFirefox() {
   ]
 
   try {
-    execFileSync(...pnpmCommand(['exec', ...args]), {
+    await runAndCapture(...pnpmCommand(['exec', ...args]), {
       cwd: rootDir,
-      stdio: 'inherit',
       env: {
         ...process.env,
         WEB_EXT_API_KEY: process.env.AMO_API_KEY,
@@ -261,7 +260,7 @@ async function submitFirefox() {
       }
     })
   } catch (error) {
-    if (error.message?.includes('Version already exists')) {
+    if (isAlreadyPublished('firefox', error)) {
       console.log(
         '\n⚠ Version already published to Firefox Add-ons — skipping\n'
       )
