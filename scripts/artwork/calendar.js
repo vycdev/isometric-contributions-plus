@@ -16,6 +16,37 @@ export const sampleDays = Array.from({ length: 364 }, (_, i) => {
   }
 })
 
+const levelFor = (count) =>
+  count === 0 ? 0 : count < 4 ? 1 : count < 9 ? 2 : count < 14 ? 3 : 4
+
+/**
+ * Sample days for one calendar year before `sampleDays`, for the line
+ * view's year-before comparison: a little quieter, ramping up through the year.
+ * Dates from the sample period on are left out, as GitHub would only have
+ * them in the sample itself.
+ */
+export const earlierYearDays = (year) => {
+  const days = []
+  const end = Math.min(
+    Date.UTC(year, 11, 31),
+    Date.parse(sampleDays[0].date) - 864e5
+  )
+  for (let time = Date.UTC(year, 0, 1); time <= end; time += 864e5) {
+    let hash = (time / 864e5) >>> 0
+    for (let i = 0; i < 3; i++) hash = (hash * 1664525 + 1013904223) >>> 0
+    const activity = hash / 2 ** 32
+    const ramp = (time - Date.UTC(2024, 9, 1)) / (365 * 864e5)
+    const count =
+      activity < 0.3 - ramp * 0.08 ? 0 : Math.ceil((activity - 0.25) * 20)
+    days.push({
+      date: new Date(time).toISOString().slice(0, 10),
+      count,
+      level: levelFor(count)
+    })
+  }
+  return days
+}
+
 export const calendarHtml = (days = sampleDays) => {
   const months = []
   const monthFormat = new Intl.DateTimeFormat('en-US', {

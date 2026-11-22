@@ -11,7 +11,11 @@ import {
   DEFAULT_CONTRIBUTION_COLOR
 } from '../src/palette.js'
 import { contributionHeight, contributionIntensity } from '../src/utils.js'
-import { calendarHtml, sampleDays } from './artwork/calendar.js'
+import {
+  calendarHtml,
+  earlierYearDays,
+  sampleDays
+} from './artwork/calendar.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (file) => fs.readFile(path.join(root, file), 'utf8')
@@ -89,7 +93,21 @@ try {
       content: await read('scripts/artwork/fixture.css')
     })
     await page.addStyleTag({ content: css })
-    await page.evaluate(() => {
+    // The line view asks GitHub for the year before; serve sample years.
+    const firstYear = Number(sampleDays[0].date.slice(0, 4))
+    const earlierYears = Object.fromEntries(
+      [firstYear - 1, firstYear].map((year) => [
+        year,
+        calendarHtml(earlierYearDays(year))
+      ])
+    )
+    await page.evaluate((earlierYears) => {
+      window.fetch = async (url) => {
+        const year = new URL(url).searchParams.get('from')?.slice(0, 4)
+        return earlierYears[year]
+          ? new Response(earlierYears[year])
+          : new Response('', { status: 404 })
+      }
       window.chrome = {
         storage: {
           local: {
@@ -108,7 +126,7 @@ try {
           }
         }
       }
-    })
+    }, earlierYears)
     for (const file of script.js)
       await page.addScriptTag({ content: await read(`dist/${file}`) })
     await page.waitForSelector('#ic-height-scale-label')
@@ -506,6 +524,90 @@ try {
       )
       await popup.close()
     }
+
+    // Line trend: Activity (with the hover tooltip) and Cumulative, side by
+    // side, against the sample year before.
+    await page.evaluate(() => window.changeViews(['line']))
+    await page.waitForSelector('.ic-line-previous')
+    const lineShots = { light: [], dark: [] }
+    for (const mode of ['light', 'dark']) {
+      await page.emulateMediaFeatures([
+        { name: 'prefers-color-scheme', value: mode }
+      ])
+      await page.evaluate(
+        (mode) => (document.documentElement.dataset.colorMode = mode),
+        mode
+      )
+      await page.evaluate(() => new Promise(requestAnimationFrame))
+      for (const lineMode of ['activity', 'cumulative']) {
+        await page.click(`[data-ic-line-mode="${lineMode}"]`)
+        await page.waitForSelector(
+          `[data-ic-line-mode="${lineMode}"][aria-pressed="true"]`
+        )
+        const stats = await page.$$eval('.ic-line-stats .ic-accent', (nodes) =>
+          nodes.map((node) => node.textContent.trim())
+        )
+        assert.equal(stats.length, 3)
+        assert.match(stats[1], /^[▲▼] \d+%$/, 'The year before loaded')
+        if (lineMode === 'activity') {
+          // Hover a day with contributions so the tooltip shows every row.
+          const box = await (await page.$('.ic-line-view svg')).boundingBox()
+          let fraction = 0.62
+          let count = '0'
+          do {
+            await page.mouse.move(
+              box.x + box.width * fraction,
+              box.y + box.height / 2
+            )
+            await page.waitForSelector('.ic-line-tip-visible')
+            // The first row is the day's contributions.
+            count = await page.$eval(
+              '.ic-line-tip-row span:last-child',
+              (node) => node.textContent
+            )
+            fraction += 0.004
+          } while (count === '0' && fraction < 0.75)
+          assert.notEqual(count, '0')
+          // Let the tooltip finish fading in.
+          await new Promise((resolve) => setTimeout(resolve, 200))
+        }
+        lineShots[mode].push({
+          name: lineMode,
+          image: await section.screenshot({ encoding: 'base64' })
+        })
+        await page.mouse.move(0, 0)
+      }
+    }
+    await page.click('[data-ic-line-mode="activity"]')
+    const lineGrid = await browser.newPage()
+    for (const mode of ['light', 'dark']) {
+      const dark = mode === 'dark'
+      await lineGrid.setViewport({
+        width: 800,
+        height: 600,
+        deviceScaleFactor: 1
+      })
+      await lineGrid.setContent(`<style>
+        body{margin:0;display:inline-flex;gap:32px;padding:24px 32px 32px;
+          background:${dark ? '#0d1117' : '#ffffff'};color:${dark ? '#f0f6fc' : '#1f2328'};
+          font:600 22px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif}
+        figure{margin:0} img{display:block;width:744px}
+        figcaption{margin-bottom:16px}
+        </style>${lineShots[mode]
+          .map(
+            ({ name, image }) =>
+              `<figure><figcaption>${name[0].toUpperCase()}${name.slice(1)}</figcaption><img src="data:image/png;base64,${image}" alt=""></figure>`
+          )
+          .join('')}`)
+      await lineGrid.evaluate(() =>
+        Promise.all([...document.images].map((img) => img.decode()))
+      )
+      await (await lineGrid.$('body')).screenshot({
+        path: path.join(root, `img/line${dark ? '-dark' : ''}.png`)
+      })
+    }
+    await lineGrid.close()
+    console.log('Rendered the line trend in both measures and themes.')
 
     // Store image uses the same live chart, framed with the fork's name.
     await page.evaluate(() => window.changeViews(['cubes']))

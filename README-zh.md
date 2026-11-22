@@ -4,7 +4,7 @@
 
 [![Node.js CI 状态](https://img.shields.io/github/actions/workflow/status/vycdev/isometric-contributions-plus/nodejs.yml?label=CI)](https://github.com/vycdev/isometric-contributions-plus/actions/workflows/nodejs.yml) [![MIT 许可证](https://img.shields.io/github/license/vycdev/isometric-contributions-plus)](LICENSE) [![通过 Patreon 支持](https://img.shields.io/badge/Patreon-Support-orange?logo=patreon&logoColor=white)](https://www.patreon.com/cw/vycdev)
 
-这是 [vycdev 维护的独立分支](https://github.com/vycdev/isometric-contributions-plus)，基于 [Jason Long 的 Isometric Contributions](https://github.com/jasonlong/isometric-contributions)。本扩展支持 Chrome / Brave、Firefox 和 Edge，并包含 Safari 项目，让你能够在 GitHub 用户档案页面的贡献图处，切换显示原生 2D 图与立体像素版贡献图。我们使用了 [obelisk.js](https://github.com/nosir/obelisk.js) 用于绘制立体图像。
+这是 [vycdev 维护的独立分支](https://github.com/vycdev/isometric-contributions-plus)，基于 [Jason Long 的 Isometric Contributions](https://github.com/jasonlong/isometric-contributions)。本扩展支持 Chrome / Brave、Firefox 和 Edge，并包含 Safari 项目，让你能够在 GitHub 用户档案页面的贡献图处，以任意组合显示立体像素图、折线趋势与原生 2D 日历。我们使用了 [obelisk.js](https://github.com/nosir/obelisk.js) 用于绘制立体图像。
 
 默认蓝色主题覆盖日历、立体图、图例、统计与设置。无活动的日期保持中性色。图表配色跟随 GitHub 的外观设置，工具栏菜单跟随系统外观。以下截图使用示例数据。
 
@@ -12,7 +12,36 @@
 
 <img src="img/preview-dark.png" width="1052" alt="深色蓝色贡献图" />
 
-立体图可以展示贡献数量之间的细微差异，但也有局限：没有坐标轴标签，较高的柱子可能遮挡较矮的柱子，且无法悬停查看日期和数量。需要这些信息时，可切换到 2D 或同时显示两种视图。
+立体图可以展示贡献数量之间的细微差异，但也有局限：没有坐标轴标签，较高的柱子可能遮挡较矮的柱子，且无法悬停查看日期和数量。需要这些信息时，可在工具栏菜单中同时开启折线趋势或 2D 日历。
+
+## 视图
+
+点击扩展的工具栏图标，在 **Views** 中任意组合开启：
+
+- **3D isometric（立体图，默认）**：立体方块，附总数、最佳单日与连续贡献天数。
+- **Line trend（折线趋势）**：每日贡献的 28 天平均值，并以虚线显示前一年同期。
+- **2D calendar（2D 日历）**：GitHub 原生日历，按所选缩放方式着色。
+
+至少保留一个视图。设置会自动保存，已打开的个人主页会立即更新。
+
+### 折线趋势
+
+折线图回答日历难以回答的问题：你的活跃度在上升还是下降？比一年前更活跃吗？
+
+- **Activity**：在淡色每日柱状图上显示 28 天平均值，并标出期间的最佳单日与最长连续贡献。
+- **Cumulative**：显示累计总数与前一年同期的对比。
+- 悬停图表，或聚焦后使用方向键，可查看任意一天的贡献数、平均值与前一年同期数值。
+- 图表下方显示最近 30 天与之前 30 天的对比、本期总数与前一年的对比，以及最活跃的星期。
+
+<img src="img/line.png" width="1052" alt="浅色主题下的折线趋势：Activity 与 Cumulative" />
+
+<img src="img/line-dark.png" width="1052" alt="深色主题下的折线趋势：Activity 与 Cumulative" />
+
+对比数据向前平移 52 周，使星期对齐。仅在开启折线视图时才会向 GitHub 请求前一年的数据；无法加载时，图表仍会显示你自己的趋势。
+
+### 过去一年
+
+在 GitHub 的年份列表中选择某一年后，GitHub 没有提供返回默认“过去 12 个月”视图的方式。扩展会在列表顶部添加 **Past year** 选项，点击即可返回。
 
 ## 贡献缩放
 
@@ -22,7 +51,7 @@
 - **Square root（平方根）**：适度提升日常活动的可见度，同时保留峰值差异。
 - **Logarithmic（对数）**：进一步降低异常峰值的视觉影响，使较少的日常活动更容易辨识。
 
-设置会自动保存，跨个人主页、年份和页面刷新生效，并立即更新 2D、3D 与同时显示模式。当前缩放方式显示在每日平均值旁边与 2D 图例下方。缩放改变 3D 柱高与 2D 颜色强度；日历方块尺寸、日期、贡献数量、提示信息与统计数据保持不变。无活动的日期保持中性色，最繁忙的可见日期达到最大强度。
+设置会自动保存，跨个人主页、年份和页面刷新生效，并立即更新所有视图。当前缩放方式显示在每日平均值旁边与 2D 图例下方。缩放改变 3D 柱高与 2D 颜色强度；日历方块尺寸、日期、贡献数量、提示信息与统计数据保持不变。无活动的日期保持中性色，最繁忙的可见日期达到最大强度。
 
 <img src="img/settings-light.png" width="328" alt="浅色设置菜单" />
 <img src="img/settings-dark.png" width="328" alt="深色设置菜单" />

@@ -35,6 +35,10 @@ The line view answers questions the calendar can't: is your activity rising or f
 - Hover over the chart, or focus it and use the arrow keys, to read any day's count, average and the year-before value.
 - Beneath the chart: your last 30 days compared with the 30 before, the period's total compared with the year before, and your most active weekday.
 
+<img src="img/line.png" width="1052" alt="The line trend in light mode, shown twice: Activity, with daily bars, the 28-day average, the dashed year before and a hover tooltip, and Cumulative, with the running total racing the year before. Beneath each, the final 30 days, the change from the year before and the most active weekday" />
+
+<img src="img/line-dark.png" width="1052" alt="The same line trend, Activity and Cumulative, in dark mode" />
+
 The comparison shifts dates back 52 weeks so weekdays line up. The year before is requested from GitHub only while the line view is on; completed years are kept for the rest of the page visit, and streaks reuse them. If it cannot load, the chart still shows your own trend. The line chart always uses linear values.
 
 ### Past year

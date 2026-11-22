@@ -10,12 +10,25 @@
   background: #ffffff;
   --fixture-border: #d1d9e0;
   --fixture-muted: #59636e;
+  /* Primer tokens the line view reads, with GitHub's own values. */
+  --fgColor-default: #1f2328;
+  --fgColor-muted: #59636e;
+  --borderColor-default: #d1d9e0;
+  --borderColor-muted: #d1d9e0b3;
+  --bgColor-default: #ffffff;
+  --overlay-bgColor: #ffffff;
 }
 [data-color-mode="dark"] {
   color: #f0f6fc;
   background: #0d1117;
   --fixture-border: #3d444d;
   --fixture-muted: #9198a1;
+  --fgColor-default: #f0f6fc;
+  --fgColor-muted: #9198a1;
+  --borderColor-default: #3d444d;
+  --borderColor-muted: #3d444db3;
+  --bgColor-default: #0d1117;
+  --overlay-bgColor: #151b23;
 }
 * {
   box-sizing: border-box;
@@ -158,6 +171,10 @@ tool-tip {
   padding-left: 4px;
   padding-right: 4px;
 }
+.px-2 {
+  padding-left: 8px;
+  padding-right: 8px;
+}
 .px-md-2 {
   padding-left: 8px;
   padding-right: 8px;
@@ -168,6 +185,9 @@ tool-tip {
 }
 .mt-1 {
   margin-top: 4px;
+}
+.mt-2 {
+  margin-top: 8px;
 }
 .mt-3 {
   margin-top: 16px;
@@ -186,6 +206,9 @@ tool-tip {
 }
 .mb-6 {
   margin-bottom: 40px;
+}
+.flex-1 {
+  flex: 1;
 }
 .ml-auto {
   margin-left: auto;
@@ -219,6 +242,13 @@ tool-tip {
   color: inherit;
   background: transparent;
   border: 1px solid var(--fixture-border);
+}
+.btn-sm {
+  font-size: 12px;
+  line-height: 26px;
+}
+.BtnGroup-item + .BtnGroup-item {
+  margin-left: -1px;
 }
 .BtnGroup-item:first-child {
   border-radius: 6px 0 0 6px;
