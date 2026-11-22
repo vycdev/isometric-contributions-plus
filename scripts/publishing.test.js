@@ -335,13 +335,20 @@ test('submission forwards the configured Chrome publisher and Firefox listing', 
     calls[0].url,
     'https://addons.mozilla.org/api/v5/addons/addon/plus%2Ftest%20listing/'
   )
-  assert.ok(calls[1].args.includes('web-ext'))
+  // AMO reviewers get the committed source alongside the minified build.
+  assert.equal(calls[1].command, 'git')
+  assert.deepEqual(calls[1].args.slice(0, 3), ['archive', '--format=zip', '-o'])
+  const sourceArchive = calls[1].args[3]
+  assert.ok(sourceArchive.endsWith('isometric-contributions-plus-source.zip'))
+  assert.ok(calls[2].args.includes('web-ext'))
+  const source = calls[2].args.indexOf('--upload-source-code')
+  assert.equal(calls[2].args[source + 1], sourceArchive)
   assert.equal(
-    calls[2].url,
+    calls[3].url,
     `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(FIREFOX_ADDON_ID)}/`
   )
-  assert.equal(calls[2].method, 'PATCH')
-  assert.equal(calls[2].body.name['en-US'], EXTENSION_NAME)
+  assert.equal(calls[3].method, 'PATCH')
+  assert.equal(calls[3].body.name['en-US'], EXTENSION_NAME)
 })
 
 test('a re-run skips a version the store already has but fails on other errors', (t) => {

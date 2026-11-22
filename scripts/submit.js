@@ -20,6 +20,9 @@ import { isAlreadyPublished, runAndCapture } from './submit-output.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const artifactsDir = path.join(rootDir, 'artifacts')
+// The committed tree that build:firefox compiles; AMO reviewers need it to
+// read and rebuild the minified bundle.
+const FIREFOX_SOURCE_ARCHIVE = 'isometric-contributions-plus-source.zip'
 
 const usage =
   'Usage: pnpm run submit:<chrome|firefox|firefox:metadata|edge|all> [--dry-run|--check-config|--preflight]'
@@ -235,9 +238,18 @@ async function submitFirefox() {
       )
     }
 
-    console.log('\n  [DRY RUN] Would submit to Firefox Add-ons')
+    console.log(
+      '\n  [DRY RUN] Would submit to Firefox Add-ons with a source archive of HEAD'
+    )
     return
   }
+
+  const sourceArchive = path.join(artifactsDir, FIREFOX_SOURCE_ARCHIVE)
+  execFileSync(
+    'git',
+    ['archive', '--format=zip', '-o', sourceArchive, 'HEAD'],
+    { cwd: rootDir, stdio: 'inherit' }
+  )
 
   const args = [
     'web-ext',
@@ -247,7 +259,9 @@ async function submitFirefox() {
     '--source-dir',
     path.join(rootDir, 'dist'),
     '--artifacts-dir',
-    artifactsDir
+    artifactsDir,
+    '--upload-source-code',
+    sourceArchive
   ]
 
   try {
