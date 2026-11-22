@@ -188,9 +188,9 @@ jobs:
           AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
         run: pnpm run submit:firefox
 
+      # Not part of "all": Edge installs extensions from the Chrome Web Store.
       - name: Submit to Edge Add-ons
-        if: inputs.store == 'all' || inputs.store == 'edge'
-        continue-on-error: ${{ inputs.store == 'all' }}
+        if: inputs.store == 'edge'
         env:
           EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}

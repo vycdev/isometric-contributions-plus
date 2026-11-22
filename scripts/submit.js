@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { pnpmCommand } from './pnpm.js'
 import {
+  ALL_STORES,
   ARTIFACT_NAMES,
   assertFirefoxIdentity,
   EXTENSION_NAME,
@@ -81,7 +82,7 @@ function checkArtifact(zipName) {
 }
 
 function checkSubmissionArtifacts(target) {
-  const browsers = target === 'all' ? Object.keys(ARTIFACT_NAMES) : [target]
+  const browsers = target === 'all' ? ALL_STORES : [target]
   for (const browser of browsers) {
     if (browser === 'firefox-metadata') continue
     checkArtifact(ARTIFACT_NAMES[browser])
@@ -326,7 +327,6 @@ async function submitEdge() {
 async function submitAll() {
   await submitChrome()
   await submitFirefox()
-  await submitEdge()
   if (dryRun) {
     console.log('\n=== Dry run complete - all checks passed ===\n')
   } else {
