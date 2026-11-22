@@ -119,10 +119,16 @@ pnpm test
 pnpm run build
 ```
 
-On Windows, clone with `git -c core.autocrlf=false clone https://github.com/vycdev/isometric-contributions-plus.git` so
-checkout preserves the LF line endings expected by Biome. The Windows CI jobs
-also preserve LF during checkout; existing CRLF checkouts may need their line
-endings corrected before the full formatting check passes.
+`.gitattributes` checks out text files with LF line endings on every platform,
+whatever `core.autocrlf` says, so Biome's formatting check passes on Windows
+too. To refresh a checkout made before it existed, commit or stash your work,
+then run these from the repository root. Run the second only if the first
+succeeds; it discards uncommitted changes.
+
+```sh
+git rm -r --cached -q .
+git reset --hard
+```
 
 Commit `pnpm-lock.yaml` when dependencies change. It was imported from the npm
 lockfile to retain existing resolutions. Dependabot intentionally uses its `npm`
