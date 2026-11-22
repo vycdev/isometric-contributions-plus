@@ -83,6 +83,12 @@ pnpm run build
 ```
 
 - **Chrome / Brave / Edge：** 打开 `chrome://extensions`、`brave://extensions` 或 `edge://extensions`，开启开发者模式，选择“加载已解压的扩展程序”，并选中 `dist/` 目录。
+
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="img/dev-mode-dark.png" />
+    <img src="img/dev-mode.png" width="981" alt="Chrome 扩展程序页面：已开启开发者模式，并标出“加载已解压的扩展程序”按钮" />
+  </picture>
+
 - **Firefox：** 运行 `pnpm run build:firefox`，打开 `about:debugging#/runtime/this-firefox`，选择“临时载入附加组件”，并选中 `dist/manifest.json`。重启后临时安装会消失。打包使用本地 `web-ext` 工具，无需系统 `zip` 命令。
 - **Safari：** 运行 `pnpm run build:safari --resources-only` 生成资源；原生应用构建需要 macOS 与 Xcode。签名配置见 [PUBLISHING.md](PUBLISHING.md#safari)（英文）。
 
@@ -94,8 +100,12 @@ pnpm run build
 
 商店账号和私人举报联系方式仍待维护者配置，详见 [PUBLISHING.md](PUBLISHING.md)。公开 issue 中请勿包含私人信息或敏感证据，也不要把本分支的支持或行为准则举报发送给原项目维护者。
 
-<img src="img/dev-mode.png" width="981" alt="启用开发者模式并加载扩展" />
-<img src="img/reload-link.png" width="410" alt="重新加载扩展" />
+修改后请重新构建，然后在扩展卡片上点击重新加载按钮，并刷新已打开的 GitHub 页面。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/reload-link-dark.png" />
+  <img src="img/reload-link.png" width="410" alt="Chrome 扩展程序页面中的 Isometric Contributions Plus 卡片，已标出重新加载按钮" />
+</picture>
 
 共享配色位于 [`src/theme.css`](src/theme.css)。图标、截图的生成方法以及与颜色自定义、2D 缩放的集成约定，见 [`scripts/artwork/README.md`](scripts/artwork/README.md)。
 

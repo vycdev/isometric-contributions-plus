@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -628,30 +629,102 @@ try {
     await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 })
     await page.screenshot({ path: path.join(root, 'img/chrome-store.png') })
 
-    // Capture current Chrome installation instructions with the built extension.
-    await page.setViewport({ width: 981, height: 600, deviceScaleFactor: 2 })
-    await page.goto('chrome://extensions/')
-    await page.click('pierce/#devMode')
-    await page.waitForSelector('pierce/#loadUnpacked', { visible: true })
-    // Chrome starts its shadow-DOM drawer/card transitions after the toggle.
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    await page.evaluate(() =>
-      Promise.all(
-        document.getAnimations().map((animation) => animation.finished)
+    // Installation screenshots of the real chrome://extensions page, once per
+    // theme. Chrome paints that page from its own appearance setting, not the
+    // emulated color scheme, so each theme gets a browser profile set to it.
+    // Otherwise the page mixes the host OS theme with the emulated one.
+    const highlight = { light: '#0969da', dark: '#58a6ff' }
+    for (const [mode, scheme] of [
+      ['light', 1],
+      ['dark', 2]
+    ]) {
+      const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'icp-artwork-'))
+      await fs.mkdir(path.join(profile, 'Default'))
+      await fs.writeFile(
+        path.join(profile, 'Default', 'Preferences'),
+        // Chrome's Appearance > Mode: 1 light, 2 dark (key renamed in M121).
+        JSON.stringify({
+          browser: { theme: { color_scheme: scheme, color_scheme2: scheme } }
+        })
       )
-    )
-    for (const id of ['devMode', 'loadUnpacked', 'dev-reload-button']) {
-      await page.$eval(`pierce/#${id}`, (node) => {
-        node.style.outline = '2px solid #58a6ff'
-        node.style.outlineOffset = '3px'
+      const themed = await puppeteer.launch({
+        headless: true,
+        pipe: true,
+        enableExtensions: true,
+        userDataDir: profile
       })
+      try {
+        await themed.installExtension(path.join(root, 'dist'))
+        const extensions = await themed.newPage()
+        await extensions.emulateMediaFeatures([
+          { name: 'prefers-color-scheme', value: mode }
+        ])
+        await extensions.setViewport({
+          width: 981,
+          height: 600,
+          deviceScaleFactor: 2
+        })
+        await extensions.goto('chrome://extensions/')
+        await extensions.click('pierce/#devMode')
+        await extensions.waitForSelector('pierce/#loadUnpacked', {
+          visible: true
+        })
+        // Chrome starts its shadow-DOM drawer/card transitions after the toggle.
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        await extensions.evaluate(() =>
+          Promise.all(
+            document.getAnimations().map((animation) => animation.finished)
+          )
+        )
+        // The whole page follows one theme: dark text on light, or the reverse.
+        const luminance = await extensions.evaluate(() => {
+          const channels = (color) =>
+            color
+              .match(/[\d.]+/g)
+              .slice(0, 3)
+              .map(Number)
+          const light = ([r, g, b]) => (r * 299 + g * 587 + b * 114) / 1000
+          const manager = document.querySelector('extensions-manager')
+          const toolbar = manager.shadowRoot.querySelector('extensions-toolbar')
+          const title = toolbar.shadowRoot
+            .querySelector('cr-toolbar')
+            .shadowRoot.querySelector('h1')
+          return {
+            page: light(
+              channels(
+                getComputedStyle(document.documentElement).backgroundColor
+              )
+            ),
+            title: light(channels(getComputedStyle(title).color))
+          }
+        })
+        if (mode === 'light') {
+          assert.ok(luminance.page > 200 && luminance.title < 80, 'Light page')
+        } else {
+          assert.ok(luminance.page < 60 && luminance.title > 180, 'Dark page')
+        }
+        for (const id of ['devMode', 'loadUnpacked', 'dev-reload-button']) {
+          await extensions.$eval(
+            `pierce/#${id}`,
+            (node, color) => {
+              node.style.outline = `2px solid ${color}`
+              node.style.outlineOffset = '3px'
+            },
+            highlight[mode]
+          )
+        }
+        const suffix = mode === 'dark' ? '-dark' : ''
+        await (await extensions.$('pierce/extensions-toolbar')).screenshot({
+          path: path.join(root, `img/dev-mode${suffix}.png`)
+        })
+        await (await extensions.$('pierce/extensions-item')).screenshot({
+          path: path.join(root, `img/reload-link${suffix}.png`)
+        })
+      } finally {
+        await themed.close()
+        await fs.rm(profile, { recursive: true, force: true }).catch(() => {})
+      }
     }
-    await (await page.$('pierce/extensions-toolbar')).screenshot({
-      path: path.join(root, 'img/dev-mode.png')
-    })
-    await (await page.$('pierce/extensions-item')).screenshot({
-      path: path.join(root, 'img/reload-link.png')
-    })
     assert.deepEqual(errors, [])
     console.log(
       'Rendered light/dark README, custom color, settings, and store artwork; all theme checks passed.'

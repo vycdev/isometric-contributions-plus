@@ -93,6 +93,12 @@ pnpm run build
 ```
 
 - **Chrome/Brave/Edge:** open `chrome://extensions`, `brave://extensions`, or `edge://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
+
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="img/dev-mode-dark.png" />
+    <img src="img/dev-mode.png" width="981" alt="Chrome's Extensions page with the Developer mode toggle switched on and the Load unpacked button, both outlined" />
+  </picture>
+
 - **Firefox** (version 121 or later): run `pnpm run build:firefox`, then open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `dist/manifest.json`. Temporary installations disappear when Firefox restarts. Packaging uses the local `web-ext` tool; no system `zip` command is required.
 - **Safari:** `pnpm run build:safari --resources-only` generates the browser resources on any supported development platform. Building the native app requires macOS/Xcode; see [publishing configuration](PUBLISHING.md#safari).
 
@@ -145,11 +151,12 @@ authenticates or uploads. See [PUBLISHING.md](PUBLISHING.md) before configuring 
 
 Report bugs, ask support questions, and discuss contributions in [this fork's issues](https://github.com/vycdev/isometric-contributions-plus/issues). Use `pnpm run start` for watch mode, `pnpm run test:unit` for unit tests, and `pnpm test` for formatting, lint, and unit checks. See [PUBLISHING.md](PUBLISHING.md) for pending store-account and private-contact setup. Never use upstream publisher accounts for this fork.
 
-<img src="img/dev-mode.png" width="981" />
-
 After changes, rebuild, then click **Reload** under the extension entry. Refresh open GitHub pages to reload the content script.
 
-<img src="img/reload-link.png" width="410" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/reload-link-dark.png" />
+  <img src="img/reload-link.png" width="410" alt="The Isometric Contributions Plus card on Chrome's Extensions page, with its Reload button outlined" />
+</picture>
 
 ### Theme and artwork
 

@@ -35,7 +35,9 @@ panel and weekday-label column match the supplied browser reference, keeping the
 10px calendar squares and painted 3D graph at comparable widths. The renderer
 checks both cell geometry and graph alignment. The extension's full-width canvas
 is unchanged. Installation screenshots use the actual extension loaded in
-headless Chrome.
+headless Chrome, once per theme. Chrome draws its Extensions page from its own
+Appearance setting rather than the emulated color scheme, so each theme gets a
+browser profile set to it.
 
 ```sh
 pnpm install --frozen-lockfile
