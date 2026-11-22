@@ -362,4 +362,12 @@ describe('full page load fallback', () => {
     expect(restorePastYearScroll(at('/someone'))).toBe(false)
     expect(scrollTo).not.toHaveBeenCalled()
   })
+
+  it('works when the browser blocks site storage', () => {
+    // Blocked site data makes reading sessionStorage itself throw.
+    vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
+      throw new DOMException('Access is denied', 'SecurityError')
+    })
+    expect(restorePastYearScroll(at('/someone'))).toBe(false)
+  })
 })

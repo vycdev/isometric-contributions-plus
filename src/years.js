@@ -8,6 +8,15 @@ const SCROLL_KEY = 'ic-past-year-scroll'
 const SCROLL_MAX_AGE = 30_000
 const ANCHOR_SELECTOR = '.js-yearly-contributions'
 
+// Reading sessionStorage itself throws when the browser blocks site data.
+const sessionStore = (win) => {
+  try {
+    return win.sessionStorage ?? null
+  } catch {
+    return null
+  }
+}
+
 const readSession = (storage, key) => {
   try {
     return JSON.parse(storage?.getItem(key) ?? 'null')
@@ -158,7 +167,7 @@ const onPastYearClick = (event, link, doc, win) => {
     .then((result) => {
       // Fall back to a full load only if the user is still where they clicked.
       if (result === true || result === STALE || isStale()) return
-      rememberScroll(link, doc, win.sessionStorage)
+      rememberScroll(link, doc, sessionStore(win))
       win.location.assign(link.href)
     })
     .finally(() => {
@@ -185,12 +194,12 @@ const listenForPastYear = (doc) => {
 export const restorePastYearScroll = (
   loc = window.location,
   doc = document,
-  storage = globalThis.sessionStorage
+  storage = sessionStore(globalThis)
 ) => {
   const saved = readSession(storage, SCROLL_KEY)
   if (!saved) return false
   try {
-    storage.removeItem(SCROLL_KEY)
+    storage?.removeItem(SCROLL_KEY)
   } catch {}
   const anchor = doc.querySelector(ANCHOR_SELECTOR)
   if (
