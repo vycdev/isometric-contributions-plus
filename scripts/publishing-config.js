@@ -59,8 +59,14 @@ export function transformForFirefox(manifest) {
     delete v2.host_permissions
   }
   v2.browser_specific_settings = {
-    // CSS :has() (popup and year list styling) needs Firefox 121.
-    gecko: { id: FIREFOX_ADDON_ID, strict_min_version: FIREFOX_MIN_VERSION }
+    gecko: {
+      id: FIREFOX_ADDON_ID,
+      // CSS :has() (popup and year list styling) needs Firefox 121.
+      strict_min_version: FIREFOX_MIN_VERSION,
+      // AMO refuses new add-ons that don't declare this. The extension
+      // collects and transmits no personal data (see PRIVACY.md).
+      data_collection_permissions: { required: ['none'] }
+    }
   }
   return v2
 }

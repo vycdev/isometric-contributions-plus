@@ -188,6 +188,10 @@ test('Firefox conversion preserves popup, permissions and homepage with the fork
     converted.browser_specific_settings.gecko.strict_min_version,
     '121.0'
   )
+  assert.deepEqual(
+    converted.browser_specific_settings.gecko.data_collection_permissions,
+    { required: ['none'] }
+  )
   assert.deepEqual(converted.browser_action, original.action)
   assert.deepEqual(converted.permissions, [
     ...original.permissions,
