@@ -230,6 +230,26 @@ test('configured dry runs and config checks perform no external actions', (t) =>
   assert.equal(fs.existsSync(path.join(dir, 'calls.json')), false)
 })
 
+test('all publishes to Chrome and Firefox only, without Edge credentials or package', (t) => {
+  const dir = fixture(t)
+  fs.unlinkSync(path.join(dir, 'artifacts', ARTIFACT_NAMES.edge))
+  const result = runSubmit(
+    dir,
+    ['all'],
+    { EDGE_PRODUCT_ID: '', EDGE_CLIENT_ID: '', EDGE_API_KEY: '' },
+    true
+  )
+  assert.equal(result.status, 0, result.stderr)
+  const calls = JSON.parse(
+    fs.readFileSync(path.join(dir, 'calls.json'), 'utf8')
+  )
+  assert.ok(calls.some((call) => call.args?.includes('chrome-webstore-upload')))
+  assert.ok(calls.some((call) => call.args?.includes('web-ext')))
+  assert.ok(
+    !calls.some((call) => call.args?.some((arg) => /submit-edge/.test(arg)))
+  )
+})
+
 test('malformed submission arguments fail before any external action', (t) => {
   const dir = fixture(t)
   for (const args of [
@@ -304,7 +324,7 @@ test('all-store artifact preflight rejects missing packages and stale Firefox id
     path.join(dir, 'dist', 'manifest.json'),
     JSON.stringify(transformForFirefox({ name: EXTENSION_NAME }))
   )
-  fs.unlinkSync(path.join(dir, 'artifacts', ARTIFACT_NAMES.edge))
+  fs.unlinkSync(path.join(dir, 'artifacts', ARTIFACT_NAMES.chrome))
   const missing = runSubmit(dir, ['all'], {}, true)
   assert.equal(missing.status, 1, missing.stdout)
   assert.match(missing.stderr, /Artifact not found/)

@@ -10,6 +10,10 @@ export const ARTIFACT_NAMES = Object.fromEntries(
   ])
 )
 
+// Stores `all` publishes to. Edge isn't listed separately: Edge installs
+// extensions from the Chrome Web Store. The `edge` target still works alone.
+export const ALL_STORES = ['chrome', 'firefox']
+
 const required = {
   chrome: [
     'CHROME_PUBLISHER_ID',
@@ -31,7 +35,7 @@ const required = {
 
 // Validate every selected store before any upload or metadata change can start.
 export function requirePublishingConfig(target, env = process.env) {
-  const targets = target === 'all' ? ['chrome', 'firefox', 'edge'] : [target]
+  const targets = target === 'all' ? ALL_STORES : [target]
   const names = targets.flatMap((store) => {
     const vars = required[store === 'firefox-metadata' ? 'firefox' : store]
     if (!vars) throw new Error(`Unknown publishing target: ${store}`)

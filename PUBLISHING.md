@@ -18,7 +18,7 @@ Configure these values only after creating listings and publisher accounts for t
 | --- | --- | --- |
 | Chrome | `CHROME_PUBLISHER_ID`, `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN` | Register a Plus listing under the fork publisher and configure OAuth credentials. |
 | Firefox | `FIREFOX_ADDON_SLUG`, `AMO_API_KEY`, `AMO_API_SECRET` | Register the Plus add-on ID, record its actual slug, and create AMO API credentials. |
-| Edge | `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, `EDGE_API_KEY` | Register a Plus product and configure Partner Center API credentials. |
+| Edge (optional) | `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, `EDGE_API_KEY` | Not listed: Edge installs extensions from the Chrome Web Store, so `all` covers Chrome and Firefox only. The `edge` target still works if a Plus product is registered later. |
 
 In Actions, the Chrome publisher ID and Firefox slug use repository **variables**; the remaining browser-store values use **secrets**. `release.yml` validates configuration before version commits, tags, or builds, then preflights every selected store and artifact before the first upload. Missing or blank values report their variable names and this document, without printing values. Configuration checks only establish presence, not ownership or validity.
 

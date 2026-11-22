@@ -146,7 +146,7 @@ Useful contributor commands:
 - `pnpm run build:safari --resources-only`: build and sync Safari resources on any platform.
 - `pnpm run build:safari` / `pnpm run build:safari:release`: also build the macOS app (requires macOS and Xcode).
 - `pnpm run version:get` / `pnpm run version:patch`: inspect or bump extension and Safari versions; minor, major, and `pnpm run version:set X.Y.Z` variants are also available.
-- `pnpm run submit:chrome`, `pnpm run submit:edge`, `pnpm run submit:firefox`, and `pnpm run release`: publish using the configured store credentials.
+- `pnpm run submit:chrome`, `pnpm run submit:firefox`, and `pnpm run release` (both): publish using the configured store credentials. `pnpm run submit:edge` is available but not part of a release, since Edge installs from the Chrome Web Store.
 
 Run script helpers through their `pnpm run` commands so child processes reuse
 the pinned pnpm CLI on Windows, macOS, and Linux, including standalone pnpm
