@@ -122,7 +122,13 @@ pnpm run build
 `.gitattributes` checks out text files with LF line endings on every platform,
 whatever `core.autocrlf` says, so Biome's formatting check passes on Windows
 too. To refresh a checkout made before it existed, commit or stash your work,
-then run `git rm -r --cached -q . && git reset --hard`.
+then run these from the repository root. Run the second only if the first
+succeeds; it discards uncommitted changes.
+
+```sh
+git rm -r --cached -q .
+git reset --hard
+```
 
 Commit `pnpm-lock.yaml` when dependencies change. It was imported from the npm
 lockfile to retain existing resolutions. Dependabot intentionally uses its `npm`
