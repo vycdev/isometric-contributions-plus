@@ -155,7 +155,7 @@ directly because Firefox submission and ZIP packaging use its executable.
 `pnpm run submit:dry-run` checks configuration and artifacts offline. It never
 authenticates or uploads. See [PUBLISHING.md](PUBLISHING.md) before configuring store accounts.
 
-Report bugs, ask support questions, and discuss contributions in [this fork's issues](https://github.com/vycdev/isometric-contributions-plus/issues). Use `pnpm run start` for watch mode, `pnpm run test:unit` for unit tests, and `pnpm test` for formatting, lint, and unit checks. See [PUBLISHING.md](PUBLISHING.md) for pending store-account and private-contact setup. Never use upstream publisher accounts for this fork.
+Report bugs, ask support questions, and discuss contributions in [this fork's issues](https://github.com/vycdev/isometric-contributions-plus/issues). Use `pnpm run start` for watch mode, `pnpm run test:unit` for unit tests, and `pnpm test` for formatting, lint, and unit checks. Report security problems privately as described in [SECURITY.md](SECURITY.md). See [PUBLISHING.md](PUBLISHING.md) for pending store-account setup. Never use upstream publisher accounts for this fork.
 
 After changes, rebuild, then click **Reload** under the extension entry. Refresh open GitHub pages to reload the content script.
 

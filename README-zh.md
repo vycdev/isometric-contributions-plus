@@ -98,7 +98,7 @@ pnpm run build
 
 请在[本仓库的 issues](https://github.com/vycdev/isometric-contributions-plus/issues) 报告错误、咨询或讨论改进。开发时运行 `pnpm run start`；单元测试运行 `pnpm run test:unit`；格式、静态检查与单元测试运行 `pnpm test`。
 
-商店账号和私人举报联系方式仍待维护者配置，详见 [PUBLISHING.md](PUBLISHING.md)。公开 issue 中请勿包含私人信息或敏感证据，也不要把本分支的支持或行为准则举报发送给原项目维护者。
+安全问题请按 [SECURITY.md](SECURITY.md)（英文）私下报告；行为准则或隐私相关的私人举报请发送邮件至 vycdev@gmail.com。商店账号仍待维护者配置，详见 [PUBLISHING.md](PUBLISHING.md)。公开 issue 中请勿包含私人信息或敏感证据，也不要把本分支的支持或行为准则举报发送给原项目维护者。
 
 修改后请重新构建，然后在扩展卡片上点击重新加载按钮，并刷新已打开的 GitHub 页面。
 

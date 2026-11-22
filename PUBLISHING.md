@@ -61,7 +61,7 @@ The Safari release workflow additionally requires secrets `APPLE_CERTIFICATE_BAS
 
 ## Support and private reporting
 
-Public bugs, privacy questions, and support go to https://github.com/vycdev/isometric-contributions-plus/issues. The maintainer is [@vycdev](https://github.com/vycdev). Issues are public. A private conduct/security reporting address or channel still needs a maintainer decision; none has been invented or inherited. Do not post sensitive evidence in issues. A public request for a private channel should omit incident details. Update `CODE_OF_CONDUCT.md` and `PRIVACY.md` together when a private channel is established.
+Public bugs, privacy questions, and support go to https://github.com/vycdev/isometric-contributions-plus/issues. The maintainer is [@vycdev](https://github.com/vycdev). Issues are public; do not post sensitive evidence in them. Security problems go through GitHub's private vulnerability reporting, as described in `SECURITY.md`. Private conduct and privacy reports go to vycdev@gmail.com, the maintainer's public address, listed in `CODE_OF_CONDUCT.md` and `PRIVACY.md`. Keep those three files in step if the contact changes.
 
 ## Reference audit and sibling integration
 

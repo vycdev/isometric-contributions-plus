@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Isometric Contributions Plus is the independent fork at https://github.com/vycdev/isometric-contributions-plus. It is a browser extension (Chrome/Brave, Firefox, Edge, Safari) that renders GitHub contribution graphs as isometric 3D pixel art using obelisk.js. Users choose any combination of the 3D isometric view, a line trend and GitHub's 2D calendar in the toolbar popup. Preserve upstream copyright and dependency notices; direct support and publishing configuration to this fork. See PUBLISHING.md for unconfigured store accounts and private reporting contact.
+Isometric Contributions Plus is the independent fork at https://github.com/vycdev/isometric-contributions-plus. It is a browser extension (Chrome/Brave, Firefox, Edge, Safari) that renders GitHub contribution graphs as isometric 3D pixel art using obelisk.js. Users choose any combination of the 3D isometric view, a line trend and GitHub's 2D calendar in the toolbar popup. Preserve upstream copyright and dependency notices; direct support and publishing configuration to this fork. See PUBLISHING.md for unconfigured store accounts, and SECURITY.md for private reporting.
 
 ## Commands
 
