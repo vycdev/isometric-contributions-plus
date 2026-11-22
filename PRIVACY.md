@@ -16,6 +16,6 @@ The extension stores your enabled views, line chart measure, contribution color 
 
 ## Contact
 
-If you have questions about this privacy policy, you can open an issue at https://github.com/vycdev/isometric-contributions-plus/issues. Issues are public; do not include private information. A private reporting contact has not been configured for this fork; see [publishing and contact setup](PUBLISHING.md#support-and-private-reporting).
+If you have questions about this privacy policy, you can open an issue at https://github.com/vycdev/isometric-contributions-plus/issues. Issues are public; do not include private information. For anything private, email vycdev@gmail.com.
 
-Last updated: November 1, 2026
+Last updated: November 22, 2026
